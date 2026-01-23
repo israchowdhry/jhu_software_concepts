@@ -1,0 +1,73 @@
+/* Apply box sizing to all elements */
+* {
+  box-sizing: border-box;
+}
+
+/* Global page styling */
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7fb;
+  color: #111;
+}
+
+/* Top navigation bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  background: #111827;
+  color: white;
+}
+
+/* Site branding */
+.brand {
+  font-weight: 700;
+}
+
+/* Navigation container */
+.nav {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Navigation links */
+.nav-link {
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: #e5e7eb;
+}
+
+/* Highlight active navigation tab */
+.nav-link.active {
+  background: #2563eb;
+  color: white;
+}
+
+/* Main content container */
+.container {
+  max-width: 1000px;
+  margin: 28px auto;
+  padding: 0 18px;
+}
+
+/* Home page layout */
+.hero {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 24px;
+  background: white;
+  padding: 26px;
+  border-radius: 16px;
+}
+
+/* Profile image */
+.headshot {
+  width: 240px;
+  height: 240px;
+  border-radius: 18px;
+  object-fit: cover;
+}
