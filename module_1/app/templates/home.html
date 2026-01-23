@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% set title = "Home" %}
+
+{% block content %}
+  <!-- Hero section with bio on the left and image on the right -->
+  <section class="hero">
+    <div class="hero-left">
+      <h1>Isra Chowdhry</h1>
+      <h2 class="subtitle">Graduate Student at Johns Hopkins University</h2>
+
+      <!-- Short biography text -->
+      <p class="bio">
+        Isra Chowdhry is a Graduate Student at Johns Hopkins University. She obtained her Bachelor of Science in Public Health
+          and is currently pursuing a Master of Science in Data Science. She wishes to bridge the gap between the healthcare field
+          and the tech world. Although she is new to this world of technology, she enjoys learning and gaining new skills. A few fun
+          facts about her is that she loves reading, has an orange cat named Goku, and loves trying to new things!
+      </p>
+    </div>
+
+    <!-- Profile image -->
+    <div class="hero-right">
+      <img class="headshot"
+           src="{{ url_for('static', filename='headshot.jpg') }}"
+           alt="Profile photo">
+    </div>
+  </section>
+{% endblock %}

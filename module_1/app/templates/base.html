@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Character encoding and responsive layout -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Page title (can be overridden by child templates) -->
+    <title>{{ title if title else "Personal Developer Website" }}</title>
+
+    <!-- Link to external CSS file -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+
+  <body>
+    <!-- Top navigation bar -->
+    <header class="topbar">
+      <div class="brand">My Dev Site</div>
+
+      <!-- Navigation bar (top-right, colorized, active tab highlighted) -->
+      <nav class="nav">
+        <a class="nav-link {{ 'active' if active_page=='home' else '' }}"
+           href="{{ url_for('pages.home') }}">Home</a>
+
+        <a class="nav-link {{ 'active' if active_page=='projects' else '' }}"
+           href="{{ url_for('pages.projects') }}">Projects</a>
+
+        <a class="nav-link {{ 'active' if active_page=='contact' else '' }}"
+           href="{{ url_for('pages.contact') }}">Contact</a>
+      </nav>
+    </header>
+
+    <!-- Main content area where child templates render -->
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
