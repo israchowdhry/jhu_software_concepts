@@ -23,3 +23,5 @@ Project structure:
 - app/: Application source code
 - static/: CSS and images
 - templates/: HTML templates
+
+NOTES: ChatGPT was used to assist with generating HTML templates and CSS styling, as allowed by course guidelines.
