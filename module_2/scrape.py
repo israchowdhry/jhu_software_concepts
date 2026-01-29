@@ -15,37 +15,59 @@ headers = {
 }
 
 # robots.txt check
-parser = robotparser.RobotFileParser()
-parser.set_url(parse.urljoin(base_url, "robots.txt"))
-parser.read()
+def _check_robots():
+    parser = robotparser.RobotFileParser()
+    parser.set_url(parse.urljoin(base_url, "robots.txt"))
+    parser.read()
 
-allowed = parser.can_fetch(headers["User-Agent"], survey_path)
-if not allowed:
-    print("robots.txt does not allow scraping")
-    exit()
+    allowed = parser.can_fetch(headers["User-Agent"], survey_path)
+    if not allowed:
+        print("robots.txt does not allow scraping")
+        exit()
 
 # scraping loop
-results = []
-page = 1
+def scrape_data(target=target):
+    _check_robots()
 
-while len(results) < target:
-    survey_url = base_url + survey_path + "?page=" + str(page) + "&pp=250"
+    raw_rows = []
+    page = 1
 
-    # request pages with urllib3
-    response = urllib3.request("GET", survey_url, headers=headers)
-    html = response.data.decode("utf-8")
-    soup = BeautifulSoup(html, "html.parser")
+    while len(raw_rows) < target:
+        survey_url = base_url + survey_path + "?page=" + str(page) + "&pp=250"
 
-    table = soup.find("table")
-    if not table:
-        break
+        # request pages with urllib3
+        response = urllib3.request("GET", survey_url, headers=headers)
+        html = response.data.decode("utf-8")
+        soup = BeautifulSoup(html, "html.parser")
 
-    rows = table.find_all("tr")
+        table = soup.find("table")
+        if not table:
+            break
 
-    if len(rows) <= 1:
-        break
+        rows = table.find_all("tr")
+        if len(rows) <= 1:
+            break
 
-    for row in rows:
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) < 4:
+                continue
+
+            # store raw text
+            raw_rows.append(row)
+
+            if len(raw_rows) >= target:
+                break
+
+        page += 1
+        time.sleep(random.uniform(0.6, 1.4))
+
+    return raw_rows
+
+def clean_data(raw_rows):
+    cleaned = []
+
+    for row in raw_rows:
         cols = row.find_all("td")
         if len(cols) < 4:
             continue
@@ -144,7 +166,7 @@ while len(results) < target:
             entry_url = None
 
         # save record
-        results.append({
+        cleaned.append({
             "program_name": program_name,
             "university": university,
             "comments": comments,
@@ -162,15 +184,19 @@ while len(results) < target:
             "gpa": gpa
         })
 
-        if len(results) >= target:
-            break
-
-    page += 1
-    time.sleep(random.uniform(0.6, 1.4))
+    return cleaned
 
 # save JSON
-with open("applicant_data.json", "w", encoding="utf-8") as f:
-    json.dump(results, f, indent=2)
+def save_data(data, filename="applicant_data.json"):
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
+def load_data(filename="applicant_data.json"):
+    with open(filename, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-
+# run
+if __name__ == "__main__":
+    raw = scrape_data()
+    cleaned = clean_data(raw)
+    save_data(cleaned, "applicant_data.json")
