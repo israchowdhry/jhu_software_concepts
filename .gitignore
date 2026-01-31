@@ -7,3 +7,11 @@
 # Python cache
 __pycache__/
 *.pyc
+
+# don't commit local model weights
+module_2/llm_hosting/models/
+
+# don't commit virtual envs
+module_2/.venv311/
+module_2/.venv313/
+.venv/
