@@ -15,3 +15,9 @@ module_2/llm_hosting/models/
 module_2/.venv311/
 module_2/.venv313/
 .venv/
+
+# LLM model weights
+*.gguf
+models/
+llm_hosting/models/
+module_2/llm_hosting/models/
