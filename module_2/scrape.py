@@ -39,7 +39,7 @@ def scrape_data(target=TARGET):
 
         rows = table.find_all("tr")
 
-        # index loop so we can grab the next <tr> rows
+        # Index loop so we can grab the next <tr> rows
         for i in range(len(rows)):
             row = rows[i]
             cols = row.find_all("td")
@@ -73,7 +73,7 @@ def scrape_data(target=TARGET):
 
     return raw_rows
 
-# run
+# Run
 if __name__ == "__main__":
     from clean import clean_data, save_data
 
