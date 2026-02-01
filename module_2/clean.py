@@ -68,7 +68,7 @@ def clean_data(raw_entries):
             elif "psy" in degree_part:
                 degree = "PsyD"
 
-        # final cleanup
+        # Final cleanup
         program_name = re.sub(
             r"\b(ph\.?d|phd|psy\.?d|psyd|masters?)\b",
             "",
