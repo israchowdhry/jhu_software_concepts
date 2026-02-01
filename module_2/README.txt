@@ -1,3 +1,5 @@
+SSH url: git@github.com:israchowdhry/jhu_software_concepts.git
+
 Name: Isra Chowdhry (ichowdh6)
 
 Module Info: Module 2 Assignment: Web Scraping Due on 02/01/2026 at 11:59 EST
@@ -101,4 +103,5 @@ The LLM output is written incrementally as JSON Lines (.jsonl), allowing the pro
 Known Bugs / Limitations:
 
 No known bugs that prevent correct data extraction or standardization.
+
 
