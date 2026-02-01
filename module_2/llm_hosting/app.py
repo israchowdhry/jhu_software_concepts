@@ -204,6 +204,12 @@ def _post_normalize_university(uni: str) -> str:
     match = _best_match(u, CANON_UNIS, cutoff=0.86)
     return match or u or "Unknown"
 
+# to make GPA:0.0 to none
+def zero_to_none(x):
+    if x is None:
+        return None
+    s = str(x).strip()
+    return None if s in {"0", "0.0", "0.00", ""} else x
 
 def _call_llm(program_text: str) -> Dict[str, str]:
     """Query the tiny LLM and return standardized fields."""
@@ -274,7 +280,10 @@ def standardize() -> Any:
 
     out: List[Dict[str, Any]] = []
     for row in rows:
-        program_text = (row or {}).get("program") or ""
+        program_text = (
+                (row or {}).get("program")
+                or f"{(row or {}).get('program_name', '')}, {(row or {}).get('university', '')}".strip(" ,")
+        )
         result = _call_llm(program_text)
         row["llm-generated-program"] = result["standardized_program"]
         row["llm-generated-university"] = result["standardized_university"]
@@ -303,10 +312,18 @@ def _cli_process_file(
 
     try:
         for row in rows:
-            program_text = (row or {}).get("program") or ""
+            program_text = (
+                    (row or {}).get("program")
+                    or f"{(row or {}).get('program_name', '')}, {(row or {}).get('university', '')}".strip(" ,")
+            )
             result = _call_llm(program_text)
             row["llm-generated-program"] = result["standardized_program"]
             row["llm-generated-university"] = result["standardized_university"]
+
+            # CLEAN MISSING GRE VALUES
+            row["gre_score"] = zero_to_none(row.get("gre_score"))
+            row["gre_v_score"] = zero_to_none(row.get("gre_v_score"))
+            row["gre_aw"] = zero_to_none(row.get("gre_aw"))
 
             json.dump(row, sink, ensure_ascii=False)
             sink.write("\n")
