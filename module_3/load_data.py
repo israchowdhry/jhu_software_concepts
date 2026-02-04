@@ -1,0 +1,67 @@
+import json
+import psycopg
+
+def load_data(jsonl_path):
+    # Connect to the database created
+    connection = psycopg.connect(
+        dbname="gradcafe",
+        user="postgres")
+
+    # Open a cursor to perform database operations
+    with connection.cursor() as cur:
+
+            # Create table once
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS applicants (
+                    p_id SERIAL PRIMARY KEY,
+                    program TEXT,
+                    comments TEXT,
+                    date_added TEXT,
+                    url TEXT UNIQUE,
+                    status TEXT,
+                    term TEXT,
+                    us_or_international TEXT,
+                    gpa FLOAT,
+                    gre FLOAT,
+                    gre_v FLOAT,
+                    gre_aw FLOAT,
+                    degree TEXT,
+                    llm_generated_program TEXT,
+                    llm_generated_university TEXT
+                );
+            """)
+
+            # Read JSONL + insert rows
+            with open(jsonl_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    row = json.loads(line)
+
+                    # No two urls should be the same
+                    cur.execute("""
+                        INSERT INTO applicants (
+                            program, comments, date_added, url, status,
+                            term, us_or_international, gpa,
+                            gre, gre_v, gre_aw, degree,
+                            llm_generated_program, llm_generated_university
+                        )
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        ON CONFLICT (url) DO NOTHING;
+                    """, (
+                        row.get("program_name"),
+                        row.get("comments"),
+                        row.get("date_added"),
+                        row.get("entry_url"),
+                        row.get("applicant_status"),
+                        row.get("start_term"),
+                        row.get("international_american"),
+                        row.get("gpa"),
+                        row.get("gre_score"),
+                        row.get("gre_v_score"),
+                        row.get("gre_aw"),
+                        row.get("degree"),
+                        row.get("llm_generated_program"),
+                        row.get("llm_generated_university"),
+                    ))
+
+if __name__ == "__main__":
+    load_data("llm_extend_applicant_data.jsonl")
