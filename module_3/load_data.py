@@ -1,5 +1,6 @@
 import json
 import psycopg
+from datetime import datetime
 
 def load_data(jsonl_path):
     # Connect to the database created
@@ -16,7 +17,7 @@ def load_data(jsonl_path):
                     p_id SERIAL PRIMARY KEY,
                     program TEXT,
                     comments TEXT,
-                    date_added TEXT,
+                    date_added DATE,
                     url TEXT UNIQUE,
                     status TEXT,
                     term TEXT,
@@ -34,7 +35,21 @@ def load_data(jsonl_path):
             # Read JSONL + insert rows
             with open(jsonl_path, "r", encoding="utf-8") as f:
                 for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue # Ignores blank lines
+
                     row = json.loads(line)
+
+                    # Convert to DATE
+                    raw_date = row.get("date_added")
+
+                    parsed_date = None
+                    if raw_date:
+                        try:
+                            parsed_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+                        except ValueError:
+                            parsed_date = None
 
                     # No two urls should be the same
                     cur.execute("""
@@ -47,9 +62,9 @@ def load_data(jsonl_path):
                         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         ON CONFLICT (url) DO NOTHING;
                     """, (
-                        row.get("program_name"),
+                        f"{row.get('university')} - {row.get('program_name')}",
                         row.get("comments"),
-                        row.get("date_added"),
+                        parsed_date,  # <-- DATE object
                         row.get("entry_url"),
                         row.get("applicant_status"),
                         row.get("start_term"),
@@ -59,9 +74,19 @@ def load_data(jsonl_path):
                         row.get("gre_v_score"),
                         row.get("gre_aw"),
                         row.get("degree"),
-                        row.get("llm_generated_program"),
-                        row.get("llm_generated_university"),
+                        row.get("llm-generated-program"),
+                        row.get("llm-generated-university"),
                     ))
+
+            connection.commit()
+
+            # Confirm number of applicants
+            cur.execute("SELECT COUNT(*) FROM applicants;")
+            print("Total rows in applicants:", cur.fetchone()[0])
+
+    connection.close()
 
 if __name__ == "__main__":
     load_data("llm_extend_applicant_data.jsonl")
+
+

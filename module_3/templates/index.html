@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grad School Cafe Data Analysis</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+  <div class="page">
+
+    <div class="topbar">
+      <h1>Grad School Cafe Data Analysis</h1>
+
+      <div class="actions">
+        <form action="{{ url_for('pull_data') }}" method="post">
+          <button class="btn" type="submit" {% if pull_running %}disabled{% endif %}>
+            Pull Data
+          </button>
+        </form>
+
+        <form action="{{ url_for('update_analysis') }}" method="post">
+          <button class="btn" type="submit" {% if pull_running %}disabled{% endif %}>
+            Update Analysis
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    {% if message %}
+      <div class="message">{{ message }}</div>
+    {% endif %}
+
+    {% for item in results %}
+      <div class="card">
+        <p class="q">{{ item.question }}</p>
+        <p class="a">Answer: {{ item.answer }}</p>
+      </div>
+    {% endfor %}
+
+  </div>
+</body>
+</html>
