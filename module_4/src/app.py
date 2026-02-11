@@ -1,13 +1,17 @@
 from flask import Flask, render_template, redirect, url_for, jsonify
 import threading
 import json
-import query_data
-from scrape import scrape_data
-from clean import clean_data
-from load_data import load_data
+from . import query_data
+from .scrape import scrape_data
+from .clean import clean_data
+from .load_data import load_data
+
 
 
 app = Flask(__name__)
+
+def create_app():
+    return app
 
 # Shared state and thread safety
 STATE_LOCK = threading.Lock()
