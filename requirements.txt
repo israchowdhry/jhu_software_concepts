@@ -1,0 +1,6 @@
+flask
+psycopg[binary]
+pytest
+pytest-cov
+beautifulsoup4
+urllib3
