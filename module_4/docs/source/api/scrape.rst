@@ -1,7 +1,7 @@
 scrape.py
 =========
 
-.. automodule:: src.scrape
+.. automodule:: scrape
    :members:
    :undoc-members:
    :show-inheritance:

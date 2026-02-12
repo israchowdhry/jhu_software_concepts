@@ -1,3 +1,19 @@
+"""
+scrape.py
+
+This module scrapes GradCafe survey listing pages and returns raw rows
+containing combined HTML segments and an optional entry URL.
+
+The workflow is:
+1) Check robots.txt to ensure scraping is allowed for the survey path.
+2) Iterate survey pages until the target number of rows is collected.
+3) Return raw rows for later cleaning and saving.
+
+Notes:
+- This scraper uses a custom User-Agent header.
+- If robots.txt disallows scraping, the script exits immediately.
+"""
+
 from urllib import parse, robotparser
 import urllib3
 from bs4 import BeautifulSoup
@@ -10,6 +26,16 @@ TARGET = 30000
 
 # Checks robots.txt and exits if scraping is disallowed
 def _check_robots():
+    """
+    Check the site's robots.txt rules for the survey path.
+
+    This function downloads and parses robots.txt, then checks whether the
+    configured User-Agent is allowed to fetch the survey listing path.
+
+    :raises SystemExit: If robots.txt disallows scraping the survey path.
+    :return: None
+    :rtype: None
+    """
     parser = robotparser.RobotFileParser()
     parser.set_url(parse.urljoin(base_url, "robots.txt"))
     parser.read()
@@ -21,6 +47,23 @@ def _check_robots():
 
 # Pulls raw rows from GradCafe listing pages
 def scrape_data(target=TARGET):
+    """
+    Scrape raw GradCafe listing rows from the survey pages.
+
+    This function loops over survey listing pages and extracts each valid
+    table row. For each record, it stores:
+    - The current <tr> row HTML plus up to two subsequent <tr> rows
+      (often tag/comment rows) combined into a single string.
+    - The entry URL (if present).
+
+    The loop stops when:
+    - The requested number of rows is collected, or
+    - The expected table cannot be found on a page.
+
+    :param int target: The desired number of raw row records to collect.
+    :return: A list of dictionaries with keys "combined_html" and "entry_url".
+    :rtype: list[dict]
+    """
     _check_robots()
 
     raw_rows = []
@@ -75,6 +118,15 @@ def scrape_data(target=TARGET):
 
 # Run
 if __name__ == "__main__":
+    """
+    Run the scraper as a script.
+
+    This block scrapes raw rows, cleans them, then saves the cleaned output
+    to a JSON file named "applicant_data.json".
+
+    :return: None
+    :rtype: None
+    """
     from clean import clean_data, save_data
 
     raw = scrape_data()

@@ -1,3 +1,17 @@
+"""
+Flask web application for Grad Cafe analytics.
+
+This module provides the web interface for:
+
+- Triggering the ETL pipeline (scrape → clean → load)
+- Running database analytics queries
+- Displaying results in a web dashboard
+- Managing background tasks safely using threading
+
+It integrates the scraping, cleaning, and database layers
+into a single interactive application.
+"""
+
 from flask import Flask, render_template, redirect, url_for, jsonify
 import threading
 import json
@@ -7,11 +21,20 @@ from .clean import clean_data
 from .load_data import load_data
 
 
-
 app = Flask(__name__)
 
+
 def create_app():
+    """
+    Create and return the Flask application instance.
+
+    This function enables application factory usage for testing.
+
+    :return: Flask application instance.
+    :rtype: flask.Flask
+    """
     return app
+
 
 # Shared state and thread safety
 STATE_LOCK = threading.Lock()
@@ -26,14 +49,36 @@ HAS_RESULTS = False
 
 JSONL_PATH = "llm_extend_applicant_data.jsonl"
 
-# Write jsonl file
+
 def write_jsonl(rows, path):
+    """
+    Write cleaned applicant records to a JSONL file.
+
+    Each record is written as a separate JSON line.
+
+    :param rows: List of cleaned applicant dictionaries.
+    :type rows: list[dict]
+    :param path: Output file path.
+    :type path: str
+    :return: None
+    :rtype: None
+    """
     with open(path, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-# Build analysis results
+
 def build_results():
+    """
+    Execute all analytics queries and construct dashboard results.
+
+    This function runs database queries defined in ``query_data``
+    and formats them into question/answer pairs for display
+    in the web interface.
+
+    :return: List of formatted analysis result dictionaries.
+    :rtype: list[dict]
+    """
     # Run all sql queries
     q1 = query_data.q1()
     q2 = query_data.q2()
@@ -73,24 +118,29 @@ def build_results():
         {"question": query_data.EXTRA_2_QUESTION, "answer": f"{extra2}"},
     ]
 
-# Background Pull Data thread
+
 def _background_pull():
+    """
+    Execute the full ETL pipeline in a background thread.
+
+    This function:
+    - Scrapes new Grad Cafe entries
+    - Cleans the raw HTML data
+    - Writes cleaned JSONL
+    - Loads data into PostgreSQL
+    - Updates shared application state safely
+
+    Thread locking ensures safe state updates.
+    """
     # Runs scrape, clean, and load in the background
     with STATE_LOCK:
         PULL_STATE["running"] = True
         PULL_STATE["message"] = "Pulling new data... please wait."
 
     try:
-        # Scrape raw rows
         raw_rows = scrape_data()
-
-        # Clean them using clean.py
         cleaned_rows = clean_data(raw_rows)
-
-        # Write cleaned JSONL
         write_jsonl(cleaned_rows, JSONL_PATH)
-
-        # Load JSONL into Postgres
         load_data(JSONL_PATH)
 
         with STATE_LOCK:
@@ -102,22 +152,37 @@ def _background_pull():
         with STATE_LOCK:
             PULL_STATE["running"] = False
 
+
 @app.route("/analysis")
 def analysis():
+    """
+    Route alias for the homepage analysis view.
+
+    :return: Rendered index page.
+    :rtype: flask.Response
+    """
     return index()
 
-# Routes
+
 @app.route("/")
 def index():
+    """
+    Render the homepage displaying cached analysis results.
+
+    If results are not cached and no background job is running,
+    results are generated automatically.
+
+    :return: Rendered HTML page.
+    :rtype: flask.Response
+    """
     global RESULTS_CACHE, HAS_RESULTS
 
-    # Homepage shows cached analysis results
     with STATE_LOCK:
         if not HAS_RESULTS and not PULL_STATE["running"]:
             RESULTS_CACHE = build_results()
             HAS_RESULTS = True
 
-        results = RESULTS_CACHE[:]  # Copy for safety
+        results = RESULTS_CACHE[:]
         running = PULL_STATE["running"]
         message = PULL_STATE["message"]
         has_results = HAS_RESULTS
@@ -130,28 +195,39 @@ def index():
         message=message
     )
 
+
 @app.route("/pull-data", methods=["POST"])
 def pull_data():
-    # Start background pull if not already running
+    """
+    Trigger the background ETL pipeline.
+
+    Returns HTTP 409 if a job is already running.
+
+    :return: JSON response indicating success or busy status.
+    :rtype: flask.Response
+    """
     with STATE_LOCK:
         if PULL_STATE["running"]:
-            # Busy -> 409 with {"busy": true}
             return jsonify({"busy": True}), 409
 
     threading.Thread(target=_background_pull, daemon=True).start()
-
-    # Success -> 200 with {"ok": true}
     return jsonify({"ok": True}), 200
+
 
 @app.route("/update-analysis", methods=["POST"])
 def update_analysis():
-    # Recompute analysis results
+    """
+    Recompute analysis results from the database.
+
+    Returns HTTP 409 if background ETL is currently running.
+
+    :return: JSON response indicating success or busy status.
+    :rtype: flask.Response
+    """
     with STATE_LOCK:
         if PULL_STATE["running"]:
-            # Busy -> 409 with {"busy": true} and performs no update
             return jsonify({"busy": True}), 409
 
-    # Run queries outside the lock
     new_results = build_results()
 
     with STATE_LOCK:
@@ -160,9 +236,14 @@ def update_analysis():
         HAS_RESULTS = True
         PULL_STATE["message"] = "Analysis updated."
 
-    # Success -> 200 with {"ok": true}
     return jsonify({"ok": True}), 200
 
-# Run app
+
 if __name__ == "__main__":
+    """
+    Run the Flask development server.
+
+    The app will be accessible on all interfaces
+    at port 8080.
+    """
     app.run(host="0.0.0.0", port=8080)

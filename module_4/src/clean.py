@@ -1,3 +1,14 @@
+"""
+Data cleaning utilities for the Grad Cafe scraper.
+
+This module transforms raw scraped HTML entries into structured
+Python dictionaries suitable for storage in JSONL format
+and insertion into a PostgreSQL database.
+
+It also provides helper utilities for saving and loading
+cleaned applicant data.
+"""
+
 import urllib3
 from bs4 import BeautifulSoup
 import re
@@ -8,6 +19,19 @@ HEADERS = {"User-Agent": "Isra"}
 
 # Normalizes whitespace and returns None for empty values
 def _norm(text):
+    """
+    Normalize whitespace in a string.
+
+    This function:
+    - Converts input to string
+    - Collapses multiple spaces into one
+    - Returns None if the result is empty
+
+    :param text: Input text to normalize.
+    :type text: str or None
+    :return: Normalized string or None if empty.
+    :rtype: str or None
+    """
     if text is None:
         return None
     text = " ".join(str(text).split())
@@ -16,6 +40,16 @@ def _norm(text):
 
 # On a detail page, extracts the <dd> value for a <dt> label
 def _get_value(soup, label):
+    """
+    Extract a <dd> value corresponding to a <dt> label from a detail page.
+
+    :param soup: BeautifulSoup-parsed HTML document.
+    :type soup: bs4.BeautifulSoup
+    :param label: Label text to search for inside <dt> tags.
+    :type label: str
+    :return: Extracted and normalized value if found.
+    :rtype: str or None
+    """
     dt = soup.find("dt", string=re.compile(label, re.I))
     if not dt:
         return None
@@ -27,6 +61,20 @@ def _get_value(soup, label):
 
 # Converts raw listing HTML into structured applicant records
 def clean_data(raw_entries):
+    """
+    Convert raw scraped HTML entries into structured applicant dictionaries.
+
+    This function:
+    - Parses listing HTML
+    - Extracts program, university, GPA, GRE, and decision data
+    - Optionally fetches detail pages for missing GRE values
+    - Returns structured records ready for database loading
+
+    :param raw_entries: List of dictionaries containing raw HTML and URLs.
+    :type raw_entries: list[dict]
+    :return: List of cleaned applicant dictionaries.
+    :rtype: list[dict]
+    """
     cleaned = []
 
     for item in raw_entries:
@@ -106,7 +154,7 @@ def clean_data(raw_entries):
                 elif applicant_status == "Rejected":
                     rejection_date = md.group(0)
 
-        # Pull tags from follow-up rows text (Fall 2026 / GPA / International / etc.)
+        # Pull tags from follow-up rows text
         all_text = _norm(soup.get_text(" ", strip=True)) or ""
 
         start_term = None
@@ -145,7 +193,6 @@ def clean_data(raw_entries):
                 detail_html = resp.data.decode("utf-8")
                 detail_soup = BeautifulSoup(detail_html, "html.parser")
 
-                # Degree backup
                 if degree is None:
                     deg_type = _get_value(detail_soup, "Degree Type")
                     if deg_type:
@@ -155,7 +202,6 @@ def clean_data(raw_entries):
                         elif "master" in dlow:
                             degree = "Masters"
 
-                # GRE values
                 if gre_score is None:
                     sp = detail_soup.find("span", string=re.compile("GRE General", re.I))
                     if sp:
@@ -196,12 +242,30 @@ def clean_data(raw_entries):
 
     return cleaned
 
-# Saves cleaned data to applicant_data.json
+
 def save_data(data, filename="applicant_data.json"):
+    """
+    Save cleaned applicant data to a JSON file.
+
+    :param data: List of cleaned applicant dictionaries.
+    :type data: list[dict]
+    :param filename: Output filename.
+    :type filename: str
+    :return: None
+    :rtype: None
+    """
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
-# Loads cleaned data from applicant_data.json
+
 def load_data(filename="applicant_data.json"):
+    """
+    Load cleaned applicant data from a JSON file.
+
+    :param filename: Path to JSON file.
+    :type filename: str
+    :return: List of applicant dictionaries.
+    :rtype: list[dict]
+    """
     with open(filename, "r", encoding="utf-8") as f:
         return json.load(f)
