@@ -21,3 +21,16 @@ module_2/.venv313/
 models/
 llm_hosting/models/
 module_2/llm_hosting/models/
+
+.coverage
+htmlcov/
+
+# generated data files
+applicant_data.json
+tmp_applicant_data.json
+llm_extend_applicant_data.jsonl
+
+module_4/applicant_data.json
+module_4/tmp_applicant_data.json
+module_4/llm_extend_applicant_data.jsonl
+
