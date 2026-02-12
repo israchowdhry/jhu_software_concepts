@@ -362,7 +362,14 @@ def q9(db_url=None):
 # -------------------------------
 
 EXTRA_1_QUESTION = "What are the top 3 most common universities/program names in the dataset?"
-
+EXTRA_1_SQL = """
+SELECT program, COUNT(*) AS n
+FROM applicants
+WHERE program IS NOT NULL AND program <> ''
+GROUP BY program
+ORDER BY n DESC
+LIMIT 3;
+"""
 
 def extra_1(db_url=None):
     """
@@ -377,7 +384,12 @@ def extra_1(db_url=None):
 
 
 EXTRA_2_QUESTION = "How many people got rejected from JHU?"
-
+EXTRA_2_SQL = """
+SELECT COUNT(*)
+FROM applicants
+WHERE COALESCE(status,'') = %s
+  AND (program ILIKE %s OR program ILIKE %s);
+"""
 
 def extra_2(db_url=None):
     """
