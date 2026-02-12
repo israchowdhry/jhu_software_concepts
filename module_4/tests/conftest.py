@@ -4,22 +4,30 @@ import psycopg
 import threading
 
 from src.app import create_app
+import src.app as app_module
 
-# Database url fixture
+
 @pytest.fixture
 def db_url():
-    return os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres")
+    """
+    DATABASE_URL used by:
+      - src/load_data.py
+      - src/query_data.py
+    Use env var if set; otherwise default to local postgres.
+    """
+    return os.getenv(
+        "DATABASE_URL",
+        "postgresql://postgres:postgres@localhost:5432/postgres"
+    )
 
-# Reset database fixture
+
 @pytest.fixture
 def reset_db(db_url):
     """
-    Ensures the applicants table exists and is empty
-    before tests that require database interaction.
+    Ensures the applicants table exists and is empty before a DB test runs.
     """
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
-            # Create table if it does not exist
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS applicants (
                     p_id SERIAL PRIMARY KEY,
@@ -39,26 +47,25 @@ def reset_db(db_url):
                     llm_generated_university TEXT
                 );
             """)
-            # Clear table before test
             cur.execute("DELETE FROM applicants;")
         conn.commit()
     return True
 
-# Flask test client fixture
+
 @pytest.fixture
 def client(monkeypatch, db_url):
     """
-    Creates a Flask test client using the app factory.
+    Returns a Flask test client using create_app() factory.
 
     Also:
-    - Injects DATABASE_URL into environment
-    - Forces background threads to run inline (no async)
+    - sets DATABASE_URL for code under test
+    - forces background pull thread to run inline (no sleep needed)
+    - resets global state so tests don't leak into each other
     """
-
-    # Ensure DATABASE_URL is available for load_data / query_data
+    # Make sure DB URL is available for query_data/load_data
     monkeypatch.setenv("DATABASE_URL", db_url)
 
-    # Run background thread inline (no sleeps)
+    # Force threading.Thread(...).start() to run immediately in tests
     real_thread = threading.Thread
 
     class InlineThread(real_thread):
@@ -66,8 +73,12 @@ def client(monkeypatch, db_url):
             self.run()
 
     monkeypatch.setattr(threading, "Thread", InlineThread)
-    # Create fresh app instance using factory
-    app = create_app()
-    app.config["TESTING"] = True
 
+    # Reset shared state
+    app_module.PULL_STATE["running"] = False
+    app_module.PULL_STATE["message"] = ""
+    app_module.RESULTS_CACHE[:] = []
+    app_module.HAS_RESULTS = False
+
+    app = create_app()
     return app.test_client()
