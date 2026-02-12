@@ -1,7 +1,7 @@
 clean.py
 =========
 
-.. automodule:: clean
+.. automodule:: src.clean
    :members:
    :undoc-members:
    :show-inheritance:

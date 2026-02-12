@@ -9,7 +9,7 @@ import sys
 # Point Sphinx at your code folder (module_4/src)
 # conf.py is in: module_4/docs/source/conf.py
 # ../../src resolves to: module_4/src
-sys.path.insert(0, os.path.abspath("../../src"))
+sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

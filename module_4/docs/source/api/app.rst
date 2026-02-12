@@ -1,7 +1,7 @@
 app.py
 =========
 
-.. automodule:: app
+.. automodule:: src.app
    :members:
    :undoc-members:
    :show-inheritance:
