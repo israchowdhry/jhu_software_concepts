@@ -1,0 +1,387 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>query_data &mdash; Grad Cafe Application 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Grad Cafe Application
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Grad Cafe Application</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">query_data</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for query_data</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psycopg</span>
+
+<div class="viewcode-block" id="get_conn">
+<a class="viewcode-back" href="../api/query_data.html#query_data.get_conn">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_conn</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">db_url</span> <span class="o">=</span> <span class="n">db_url</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DATABASE_URL&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">db_url</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;DATABASE_URL is not set&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="fetch_one">
+<a class="viewcode-back" href="../api/query_data.html#query_data.fetch_one">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_one</span><span class="p">(</span><span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">(),</span> <span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">get_conn</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+            <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="fetch_row">
+<a class="viewcode-back" href="../api/query_data.html#query_data.fetch_row">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_row</span><span class="p">(</span><span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">(),</span> <span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">get_conn</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+            <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="fetch_all">
+<a class="viewcode-back" href="../api/query_data.html#query_data.fetch_all">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_all</span><span class="p">(</span><span class="n">sql</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">(),</span> <span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">get_conn</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+            <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span></div>
+
+
+<span class="c1"># How many entries do you have in your database who have applied for Fall 2026?</span>
+<span class="n">Q1_SQL</span> <span class="o">=</span> <span class="s2">&quot;SELECT COUNT(*) FROM applicants WHERE term = </span><span class="si">%s</span><span class="s2">;&quot;</span>
+
+<div class="viewcode-block" id="q1">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q1">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q1</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q1_SQL</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;Fall 2026&quot;</span><span class="p">,),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># % International students to 2 decimals</span>
+<span class="n">Q2_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT ROUND(</span>
+<span class="s2">    100.0 * SUM(CASE WHEN us_or_international NOT IN (&#39;American&#39;,&#39;Other&#39;) THEN 1 ELSE 0 END)</span>
+<span class="s2">    / NULLIF(COUNT(*), 0),</span>
+<span class="s2">    2</span>
+<span class="s2">)</span>
+<span class="s2">FROM applicants;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q2">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q2">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q2</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q2_SQL</span><span class="p">,</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># Avg GPA, GRE, GRE V, GRE AW</span>
+<span class="n">Q3_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT</span>
+<span class="s2">  ROUND(AVG(gpa)::numeric, 2) AS avg_gpa,</span>
+<span class="s2">  ROUND(AVG(gre)::numeric, 2) AS avg_gre_q,</span>
+<span class="s2">  ROUND(AVG(gre_v)::numeric, 2) AS avg_gre_v,</span>
+<span class="s2">  ROUND(AVG(gre_aw)::numeric, 2) AS avg_gre_aw</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE (gpa IS NULL OR (gpa BETWEEN 0 AND 4.0))</span>
+<span class="s2">  AND (gre IS NULL OR (gre BETWEEN 130 AND 170))</span>
+<span class="s2">  AND (gre_v IS NULL OR (gre_v BETWEEN 130 AND 170))</span>
+<span class="s2">  AND (gre_aw IS NULL OR (gre_aw BETWEEN 0 AND 6));</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q3">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q3">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q3</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_row</span><span class="p">(</span><span class="n">Q3_SQL</span><span class="p">,</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># Avg GPA of American students in Fall 2026</span>
+<span class="n">Q4_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT ROUND(AVG(gpa)::numeric, 2)</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE term = </span><span class="si">%s</span>
+<span class="s2">  AND us_or_international = </span><span class="si">%s</span>
+<span class="s2">  AND gpa IS NOT NULL;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q4">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q4">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q4</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q4_SQL</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;Fall 2026&quot;</span><span class="p">,</span> <span class="s2">&quot;American&quot;</span><span class="p">),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># % of Fall 2026 entries that are Acceptances to 2 decimals</span>
+<span class="n">Q5_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT ROUND(</span>
+<span class="s2">    100.0 * SUM(CASE WHEN status = &#39;Accepted&#39; THEN 1 ELSE 0 END)</span>
+<span class="s2">    / NULLIF(COUNT(*), 0),</span>
+<span class="s2">    2</span>
+<span class="s2">)</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE term = </span><span class="si">%s</span><span class="s2">;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q5">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q5">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q5</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q5_SQL</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;Fall 2026&quot;</span><span class="p">,),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># Avg GPA of Fall 2026 applicants who are Acceptances</span>
+<span class="n">Q6_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT ROUND(AVG(gpa)::numeric, 2)</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE COALESCE(term,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND COALESCE(status,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND gpa IS NOT NULL;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q6">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q6">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q6</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q6_SQL</span><span class="p">,</span> <span class="p">(</span>
+        <span class="s2">&quot;</span><span class="si">%F</span><span class="s2">all 2026%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%Accepted%&quot;</span>
+    <span class="p">),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># How many entries applied to JHU for a masters in Computer Science?</span>
+<span class="n">Q7_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT COUNT(*)</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE degree ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND program ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND (program ILIKE </span><span class="si">%s</span><span class="s2"> OR program ILIKE </span><span class="si">%s</span><span class="s2">);</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q7">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q7">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q7</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q7_SQL</span><span class="p">,</span> <span class="p">(</span>
+        <span class="s2">&quot;%master%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%c</span><span class="s2">omputer science%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%johns hopkins%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%jhu%&quot;</span><span class="p">,</span>
+    <span class="p">),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># How many entries from 2026 are acceptances for</span>
+<span class="c1"># Georgetown/MIT/Stanford/CMU for PhD CS?</span>
+<span class="n">Q8_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT COUNT(*)</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE term ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND status = </span><span class="si">%s</span>
+<span class="s2">  AND degree ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND program ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND (</span>
+<span class="s2">       program ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR program ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR program ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR program ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR program ILIKE </span><span class="si">%s</span>
+<span class="s2">  );</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q8">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q8">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q8</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q8_SQL</span><span class="p">,</span> <span class="p">(</span>
+        <span class="s2">&quot;</span><span class="si">%2026%</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accepted&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%phd%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%c</span><span class="s2">omputer science%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%g</span><span class="s2">eorgetown%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%Massachusetts Institute of Technology%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%mit%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">tanford%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%c</span><span class="s2">arnegie mellon%&quot;</span><span class="p">,</span>
+    <span class="p">),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># Do numbers for Q8 change if using LLM generated fields?</span>
+<span class="n">Q9_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT COUNT(*)</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE COALESCE(term,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND COALESCE(status,&#39;&#39;) = </span><span class="si">%s</span>
+<span class="s2">  AND COALESCE(degree,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND COALESCE(llm_generated_program,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">  AND (</span>
+<span class="s2">       COALESCE(llm_generated_university,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR COALESCE(llm_generated_university,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR COALESCE(llm_generated_university,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR COALESCE(llm_generated_university,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">    OR COALESCE(llm_generated_university,&#39;&#39;) ILIKE </span><span class="si">%s</span>
+<span class="s2">  );</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="q9">
+<a class="viewcode-back" href="../api/query_data.html#query_data.q9">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">q9</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">Q9_SQL</span><span class="p">,</span> <span class="p">(</span>
+        <span class="s2">&quot;</span><span class="si">%2026%</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Accepted&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%phd%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%c</span><span class="s2">omputer science%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%g</span><span class="s2">eorgetown%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%massachusetts institute of technology%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%mit%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">tanford%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;</span><span class="si">%c</span><span class="s2">arnegie mellon%&quot;</span><span class="p">,</span>
+    <span class="p">),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="c1"># Additional 2 questions</span>
+<span class="n">EXTRA_1_QUESTION</span> <span class="o">=</span> <span class="s2">&quot;What are the top 3 most common universities/program names in the dataset?&quot;</span>
+<span class="n">EXTRA_1_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT program, COUNT(*) AS n</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE program IS NOT NULL AND program &lt;&gt; &#39;&#39;</span>
+<span class="s2">GROUP BY program</span>
+<span class="s2">ORDER BY n DESC</span>
+<span class="s2">LIMIT 3;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="extra_1">
+<a class="viewcode-back" href="../api/query_data.html#query_data.extra_1">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">extra_1</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_all</span><span class="p">(</span><span class="n">EXTRA_1_SQL</span><span class="p">,</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<span class="n">EXTRA_2_QUESTION</span> <span class="o">=</span> <span class="s2">&quot;How many people got rejected from JHU?&quot;</span>
+<span class="n">EXTRA_2_SQL</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">SELECT COUNT(*)</span>
+<span class="s2">FROM applicants</span>
+<span class="s2">WHERE COALESCE(status,&#39;&#39;) = </span><span class="si">%s</span>
+<span class="s2">  AND (program ILIKE </span><span class="si">%s</span><span class="s2"> OR program ILIKE </span><span class="si">%s</span><span class="s2">);</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="extra_2">
+<a class="viewcode-back" href="../api/query_data.html#query_data.extra_2">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">extra_2</span><span class="p">(</span><span class="n">db_url</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">fetch_one</span><span class="p">(</span><span class="n">EXTRA_2_SQL</span><span class="p">,</span> <span class="p">(</span>
+        <span class="s2">&quot;Rejected&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%johns hopkins%&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;%jhu%&quot;</span><span class="p">,</span>
+    <span class="p">),</span> <span class="n">db_url</span><span class="o">=</span><span class="n">db_url</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../api/query_data.html#query_data.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="c1"># Print answers</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q1 (Count Fall 2026): </span><span class="si">{</span><span class="n">q1</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q2 (% International Applicants): </span><span class="si">{</span><span class="n">q2</span><span class="p">()</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+    <span class="n">avg_gpa</span><span class="p">,</span> <span class="n">avg_gre_q</span><span class="p">,</span> <span class="n">avg_gre_v</span><span class="p">,</span> <span class="n">avg_gre_aw</span> <span class="o">=</span> <span class="n">q3</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Q3 (Averages of scores):&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   avg_gpa   = </span><span class="si">{</span><span class="n">avg_gpa</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   avg_gre_q = </span><span class="si">{</span><span class="n">avg_gre_q</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   avg_gre_v = </span><span class="si">{</span><span class="n">avg_gre_v</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   avg_gre_aw = </span><span class="si">{</span><span class="n">avg_gre_aw</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q4 (Avg GPA American Fall 2026): </span><span class="si">{</span><span class="n">q4</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q5 (% Acceptances Fall 2026): </span><span class="si">{</span><span class="n">q5</span><span class="p">()</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q6 (Avg GPA Fall 2026 Acceptances): </span><span class="si">{</span><span class="n">q6</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q7 (JHU Masters CS count) </span><span class="si">{</span><span class="n">q7</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q8 (2026 PhD CS Acceptances at GU/MIT/Stanford/CMU): </span><span class="si">{</span><span class="n">q8</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Q9 (2026 PhD CS Acceptances at GU/MIT/Stanford/CMU using LLM fields): </span><span class="si">{</span><span class="n">q9</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extra Q1: </span><span class="si">{</span><span class="n">EXTRA_1_QUESTION</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">program</span><span class="p">,</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">extra_1</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">program</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extra Q2: </span><span class="si">{</span><span class="n">EXTRA_2_QUESTION</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">extra_2</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Isra Chowdhry.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

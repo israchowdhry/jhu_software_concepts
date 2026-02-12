@@ -34,5 +34,4 @@ module_4/applicant_data.json
 module_4/tmp_applicant_data.json
 module_4/llm_extend_applicant_data.jsonl
 
-docs/build/
-
+module_4/docs/build/doctrees/
