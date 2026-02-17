@@ -1,0 +1,5 @@
+sphinx
+sphinx-rtd-theme
+urllib3
+beautifulsoup4
+psycopg
