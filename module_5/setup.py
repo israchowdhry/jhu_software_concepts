@@ -12,7 +12,7 @@ setup(
     name="gradcafe-analytics",
     version="0.1.0",
     description="Grad Cafe Analytics Web Application (Module 5)",
-    author="Your Name",
+    author="Isra",
     packages=find_packages(),
     install_requires=[
         "flask==3.0.2",

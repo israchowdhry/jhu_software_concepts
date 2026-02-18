@@ -12,14 +12,20 @@ which supports CI usage and avoids hard-coded credentials.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 import psycopg
 from psycopg import sql
 
-from .db_config import build_db_url_from_env
+from .db_config import resolve_db_url
 
+def _resolve_db_url(db_url: str | None = None) -> str:
+    """
+    Backward-compatible wrapper used by tests.
+
+    Tests call src.load_data._resolve_db_url directly.
+    """
+    return resolve_db_url(db_url)
 
 CREATE_TABLE_SQL = sql.SQL(
     """
@@ -74,34 +80,6 @@ ON CONFLICT (url) DO NOTHING;
 COUNT_SQL = sql.SQL("SELECT COUNT(*) FROM applicants;")
 
 
-def _resolve_db_url(db_url: str | None = None) -> str:
-    """
-    Resolve DB URL from argument or environment.
-
-    Tests expect a RuntimeError if DATABASE_URL is missing.
-
-    :param db_url: Optional explicit DB URL override.
-    :type db_url: str | None
-    :return: Database URL
-    :rtype: str
-    :raises RuntimeError: If DATABASE_URL is not set and db_url is None.
-    """
-    if db_url:
-        return db_url
-
-    env_url = os.getenv("DATABASE_URL")
-    if env_url:
-        return env_url
-
-    # Only fall back to DB_* if they are present
-    required = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]
-    if all(os.getenv(k) for k in required):
-        return build_db_url_from_env()
-
-    # Test expects this exact message
-    raise RuntimeError("DATABASE_URL is not set")
-
-
 def load_data(jsonl_path: str, *, db_url: str | None = None) -> None:
     """
     Load applicant records from a JSONL file into the database.
@@ -121,7 +99,7 @@ def load_data(jsonl_path: str, *, db_url: str | None = None) -> None:
     :return: None
     :rtype: None
     """
-    resolved = _resolve_db_url(db_url)
+    resolved = resolve_db_url(db_url)
 
     with psycopg.connect(resolved) as conn:
         with conn.cursor() as cur:
@@ -136,8 +114,16 @@ def load_data(jsonl_path: str, *, db_url: str | None = None) -> None:
                     row: dict[str, Any] = json.loads(line)
 
                     program = f"{row.get('university')} - {row.get('program_name')}"
-                    llm_prog = row.get("llm-generated-program") or row.get("llm_generated_program")
-                    llm_univ = row.get("llm-generated-university") or row.get("llm_generated_university")
+
+                    llm_prog = (
+                        row.get("llm-generated-program")
+                        or row.get("llm_generated_program")
+                    )
+
+                    llm_univ = (
+                        row.get("llm-generated-university")
+                        or row.get("llm_generated_university")
+                    )
 
                     cur.execute(
                         INSERT_SQL,

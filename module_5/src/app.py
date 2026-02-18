@@ -41,8 +41,14 @@ app = Flask(
 STATE_LOCK = threading.Lock()
 PULL_STATE: dict[str, Any] = {"running": False, "message": ""}
 
+# Keep these names defined at module level for tests,
+# but store the mutable state on the Flask app to avoid globals.
 RESULTS_CACHE: list[dict[str, str]] = []
 HAS_RESULTS: bool = False
+
+# App-attached state (no global statements needed)
+app.results_cache: list[dict[str, str]] = []
+app.has_results: bool = False
 
 JSONL_PATH = "llm_extend_applicant_data.jsonl"
 
@@ -226,18 +232,15 @@ def index():
     :return: Rendered HTML page
     :rtype: flask.Response
     """
-    # We assign to module globals here (so global is required).
-    global HAS_RESULTS, RESULTS_CACHE  # pylint: disable=global-statement
-
     with STATE_LOCK:
-        if not HAS_RESULTS and not PULL_STATE["running"]:
-            RESULTS_CACHE = build_results()
-            HAS_RESULTS = True
+        if not app.has_results and not PULL_STATE["running"]:
+            app.results_cache = build_results()
+            app.has_results = True
 
-        results = list(RESULTS_CACHE)
+        results = list(app.results_cache)
         running = bool(PULL_STATE["running"])
         message = str(PULL_STATE["message"])
-        has_results = bool(HAS_RESULTS)
+        has_results = bool(app.has_results)
 
     return render_template(
         "index.html",
@@ -276,8 +279,6 @@ def update_analysis():
     :return: JSON response indicating success or busy status
     :rtype: flask.Response
     """
-    global HAS_RESULTS, RESULTS_CACHE  # pylint: disable=global-statement
-
     with STATE_LOCK:
         if PULL_STATE["running"]:
             return jsonify({"busy": True}), 409
@@ -285,8 +286,8 @@ def update_analysis():
     new_results = build_results()
 
     with STATE_LOCK:
-        RESULTS_CACHE = new_results
-        HAS_RESULTS = True
+        app.results_cache = new_results
+        app.has_results = True
         PULL_STATE["message"] = "Analysis updated."
 
     return jsonify({"ok": True}), 200

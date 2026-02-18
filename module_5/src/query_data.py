@@ -10,13 +10,20 @@ acceptance rates, and program-level aggregations.
 
 from __future__ import annotations
 
-import os
 from typing import Any, Sequence
 
 import psycopg
 from psycopg import sql
 
-from .db_config import build_db_url_from_env
+from .db_config import resolve_db_url
+
+def _resolve_db_url(db_url: str | None = None) -> str:
+    """
+    Backward-compatible wrapper used by tests.
+
+    Tests call src.query_data._resolve_db_url directly.
+    """
+    return resolve_db_url(db_url)
 
 
 # Enforced query LIMIT bounds (Step 2 requirement)
@@ -43,32 +50,6 @@ def clamp_limit(raw_limit: Any, default: int = DEFAULT_LIMIT) -> int:
     return max(MIN_LIMIT, min(MAX_LIMIT, value))
 
 
-def _resolve_db_url(db_url: str | None = None) -> str:
-    """
-    Resolve the database URL from an explicit argument or the environment.
-
-    Tests expect DATABASE_URL to be used and to raise if missing.
-
-    :param db_url: Optional explicit DB URL override.
-    :type db_url: str | None
-    :return: Database URL.
-    :rtype: str
-    :raises RuntimeError: If DATABASE_URL is not set and db_url is None.
-    """
-    if db_url:
-        return db_url
-
-    env_url = os.getenv("DATABASE_URL")
-    if env_url:
-        return env_url
-
-    required = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]
-    if all(os.getenv(k) for k in required):
-        return build_db_url_from_env()
-
-    raise RuntimeError("DATABASE_URL is not set")
-
-
 def get_conn(db_url: str | None = None) -> psycopg.Connection:
     """
     Establish a connection to the PostgreSQL database.
@@ -79,7 +60,7 @@ def get_conn(db_url: str | None = None) -> psycopg.Connection:
     :rtype: psycopg.Connection
     :raises RuntimeError: If DATABASE_URL is not set and db_url is None.
     """
-    resolved = _resolve_db_url(db_url)
+    resolved = resolve_db_url(db_url)
     return psycopg.connect(resolved)
 
 
@@ -281,7 +262,11 @@ def q4(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> float:
     :return: Average GPA.
     :rtype: float
     """
-    value = fetch_one(Q4_SQL, ("Fall 2026", "American", clamp_limit(limit)), db_url=db_url)
+    value = fetch_one(
+        Q4_SQL,
+        ("Fall 2026", "American", clamp_limit(limit)),
+        db_url=db_url,
+    )
     return float(value) if value is not None else 0.0
 
 
@@ -345,7 +330,11 @@ def q6(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> float:
     :return: Average GPA of accepted applicants.
     :rtype: float
     """
-    value = fetch_one(Q6_SQL, ("%Fall 2026%", "%Accepted%", clamp_limit(limit)), db_url=db_url)
+    value = fetch_one(
+        Q6_SQL,
+        ("%Fall 2026%", "%Accepted%", clamp_limit(limit)),
+        db_url=db_url,
+    )
     return float(value) if value is not None else 0.0
 
 
@@ -378,7 +367,13 @@ def q7(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> int:
     """
     value = fetch_one(
         Q7_SQL,
-        ("%master%", "%computer science%", "%johns hopkins%", "%jhu%", clamp_limit(limit)),
+        (
+            "%master%",
+            "%computer science%",
+            "%johns hopkins%",
+            "%jhu%",
+            clamp_limit(limit),
+        ),
         db_url=db_url,
     )
     return int(value or 0)
