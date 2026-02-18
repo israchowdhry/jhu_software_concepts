@@ -137,9 +137,7 @@ def fetch_all(
             return cur.fetchall()
 
 
-# -------------------------------
 # Q1
-# -------------------------------
 
 Q1_SQL = sql.SQL("SELECT COUNT(*) FROM applicants WHERE term = %s LIMIT %s;")
 
@@ -159,9 +157,7 @@ def q1(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> int:
     return int(val or 0)
 
 
-# -------------------------------
 # Q2
-# -------------------------------
 
 Q2_SQL = sql.SQL(
     """
@@ -193,9 +189,7 @@ def q2(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> float:
     return float(value) if value is not None else 0.0
 
 
-# -------------------------------
 # Q3
-# -------------------------------
 
 Q3_SQL = sql.SQL(
     """
@@ -235,9 +229,7 @@ def q3(
     return row[0], row[1], row[2], row[3]
 
 
-# -------------------------------
 # Q4
-# -------------------------------
 
 Q4_SQL = sql.SQL(
     """
@@ -270,9 +262,7 @@ def q4(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> float:
     return float(value) if value is not None else 0.0
 
 
-# -------------------------------
 # Q5
-# -------------------------------
 
 Q5_SQL = sql.SQL(
     """
@@ -303,9 +293,7 @@ def q5(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> float:
     return float(value) if value is not None else 0.0
 
 
-# -------------------------------
 # Q6
-# -------------------------------
 
 Q6_SQL = sql.SQL(
     """
@@ -338,9 +326,7 @@ def q6(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> float:
     return float(value) if value is not None else 0.0
 
 
-# -------------------------------
 # Q7
-# -------------------------------
 
 Q7_SQL = sql.SQL(
     """
@@ -379,9 +365,7 @@ def q7(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> int:
     return int(value or 0)
 
 
-# -------------------------------
 # Q8
-# -------------------------------
 
 Q8_SQL = sql.SQL(
     """
@@ -434,9 +418,7 @@ def q8(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> int:
     return int(value or 0)
 
 
-# -------------------------------
 # Q9
-# -------------------------------
 
 Q9_SQL = sql.SQL(
     """
@@ -488,9 +470,7 @@ def q9(limit: Any = DEFAULT_LIMIT, *, db_url: str | None = None) -> int:
     return int(value or 0)
 
 
-# -------------------------------
 # Extra Questions
-# -------------------------------
 
 EXTRA_1_QUESTION = "What are the top 3 most common universities/program names in the dataset?"
 EXTRA_1_SQL = sql.SQL(

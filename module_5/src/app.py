@@ -34,9 +34,7 @@ app = Flask(
     static_folder=str(BASE_DIR / "static"),
 )
 
-# ---------------------------------------------------------------------
 # Shared State (tests require these names at module level)
-# ---------------------------------------------------------------------
 
 STATE_LOCK = threading.Lock()
 PULL_STATE: dict[str, Any] = {"running": False, "message": ""}
