@@ -40,7 +40,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # If you added setup.py, this makes imports consistent
           pip install -e .
 
       # 1) Run Pylint and fail if score < 10
@@ -48,7 +47,7 @@ jobs:
         run: |
           pylint src --fail-under=10
 
-      # 2) Run your tests (pytest.ini enforces cov-fail-under=100)
+      # 2) Run tests (pytest.ini enforces cov-fail-under=100)
       - name: Pytest
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
@@ -57,13 +56,12 @@ jobs:
 
       # 3) Generate dependency.svg using pydeps + Graphviz and fail if missing
       - name: Install Graphviz
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
 
       - name: Generate dependency.svg (pydeps)
         run: |
-          pydeps src --noshow --output dependency.svg
+          pydeps src --noshow --show-deps --dot-output dependency.dot
+          dot -Tsvg dependency.dot -o dependency.svg
           test -f dependency.svg
 
       - name: Upload dependency.svg artifact
@@ -73,14 +71,17 @@ jobs:
           path: module_5/dependency.svg
 
       # 4) Run snyk test (dependency scan)
-      # NOTE: requires a repo secret named SNYK_TOKEN
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk
+      - name: Set up Node (for Snyk)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      - name: Snyk test (non-blocking)
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Snyk test (dependencies)
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           snyk auth "${SNYK_TOKEN}"
-          snyk test --file=requirements.txt || true
+          snyk test --file=requirements.txt
