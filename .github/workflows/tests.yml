@@ -60,7 +60,8 @@ jobs:
 
       - name: Generate dependency.svg (pydeps)
         run: |
-          pydeps src --noshow --show-deps --dot-output dependency.dot
+          pydeps src --noshow --dot-output dependency.dot
+          test -f dependency.dot
           dot -Tsvg dependency.dot -o dependency.svg
           test -f dependency.svg
 
