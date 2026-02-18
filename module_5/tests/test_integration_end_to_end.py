@@ -739,3 +739,157 @@ def test_clean_degree_backup_hits_line_154(monkeypatch):
 
     # This assertion forces execution of line 154
     assert cleaned[0]["degree"] == "PhD"
+
+
+@pytest.mark.integration
+def test_clean_helpers_and_summary_fields_branches():
+    import src.clean as c
+    from bs4 import BeautifulSoup
+
+    assert c._norm(None) is None  # pylint: disable=protected-access
+    assert c._norm("  a   b  ") == "a b"  # pylint: disable=protected-access
+
+    # _extract_row_cells: no <tr> branch
+    soup = BeautifulSoup("<html></html>", "html.parser")
+    assert c._extract_row_cells(soup) is None  # pylint: disable=protected-access
+
+    # <tr> but too few <td>
+    soup = BeautifulSoup("<tr><td>1</td></tr>", "html.parser")
+    assert c._extract_row_cells(soup) is None  # pylint: disable=protected-access
+
+    # _extract_comments: no <p> branch
+    assert (
+        c._extract_comments(BeautifulSoup("<div></div>", "html.parser")) is None
+    )  # pylint: disable=protected-access
+
+    # _extract_summary_fields: missing <tr> branch
+    assert (
+        c._extract_summary_fields(BeautifulSoup("<div></div>", "html.parser")) is None
+    )  # pylint: disable=protected-access
+
+    # _extract_summary_fields: too few <td> branch
+    html = "<table><tr><td>A</td><td>B</td><td>C</td></tr></table>"
+    assert (
+        c._extract_summary_fields(BeautifulSoup(html, "html.parser")) is None
+    )  # pylint: disable=protected-access
+
+
+@pytest.mark.integration
+def test_fetch_detail_fields_branches(monkeypatch):
+    import src.clean as c
+
+    # entry_url missing
+    assert c._fetch_detail_fields(None) == (None, None, None, None)  # pylint: disable=protected-access
+
+    # request raises
+    def boom(*_a, **_k):
+        raise OSError("no internet in tests")
+
+    monkeypatch.setattr(c.urllib3, "request", boom)
+    assert c._fetch_detail_fields("http://x") == (None, None, None, None)  # pylint: disable=protected-access
+
+    # non-200 status
+    class Resp:
+        status = 500
+        data = b""
+
+    monkeypatch.setattr(c.urllib3, "request", lambda *_a, **_k: Resp())
+    assert c._fetch_detail_fields("http://y") == (None, None, None, None)  # pylint: disable=protected-access
+
+    # 200 status with HTML that matches your parsing
+    class Resp200:
+        status = 200
+        data = b"""
+        <html>
+          <dl>
+            <dt>Degree Type</dt><dd>Masters</dd>
+          </dl>
+          <span>GRE General</span><span>165</span>
+          <span>GRE Verbal</span><span>160</span>
+          <span>Analytical Writing</span><span>4.5</span>
+        </html>
+        """
+
+    monkeypatch.setattr(c.urllib3, "request", lambda *_a, **_k: Resp200())
+    deg, gre_total, gre_v, gre_aw = c._fetch_detail_fields("http://z")  # pylint: disable=protected-access
+    assert deg == "Masters"
+    assert gre_total == "165"
+    assert gre_v == "160"
+    assert gre_aw == "4.5"
+
+
+@pytest.mark.integration
+def test_clean_data_skip_and_degree_fill(monkeypatch):
+    import src.clean as c
+
+    # skip branch: missing combined_html
+    out = c.clean_data([{"entry_url": "http://x"}])
+    assert out == []
+
+    # base None branch: combined_html malformed (no tr)
+    out = c.clean_data([{"combined_html": "<div>no table</div>", "entry_url": "http://x"}])
+    assert out == []
+
+    # degree fill branch: base degree None, detail returns Masters
+    listing = """
+    <table>
+      <tr>
+        <td>MIT</td>
+        <td>Computer Science</td>
+        <td>January 1, 2026</td>
+        <td>Accepted 12 Feb</td>
+      </tr>
+    </table>
+    <p>GPA 3.9 International Fall 2026</p>
+    """
+
+    monkeypatch.setattr(
+        c,
+        "_fetch_detail_fields",
+        lambda _url: ("Masters", "165", "160", "4.5"),
+    )
+
+    out = c.clean_data([{"combined_html": listing, "entry_url": "http://detail"}])
+    assert len(out) == 1
+    assert out[0]["degree"] == "Masters"
+    assert out[0]["gre_score"] == "165"
+    assert out[0]["gre_v_score"] == "160"
+    assert out[0]["gre_aw"] == "4.5"
+
+
+@pytest.mark.integration
+def test_clean_helper_guard_branches():
+    import src.clean as c
+
+    # Line ~73: _parse_program_and_degree early return when program_text is falsy
+    assert c._parse_program_and_degree("") == (None, None)  # pylint: disable=protected-access
+    assert c._parse_program_and_degree(None) == (None, None)  # pylint: disable=protected-access
+
+    # Line ~112: _parse_decision early return when decision_text is falsy
+    assert c._parse_decision("") == (None, None, None)  # pylint: disable=protected-access
+    assert c._parse_decision(None) == (None, None, None)  # pylint: disable=protected-access
+
+
+@pytest.mark.integration
+def test_clean_helpers_success_returns_cover_return_lines_260_275():
+    import src.clean as c
+
+    # Covers line 260: return cols (needs at least one <tr> with >= 4 <td>)
+    html_with_row = """
+    <table>
+      <tr>
+        <td>Col1</td><td>Col2</td><td>Col3</td><td>Col4</td>
+      </tr>
+    </table>
+    """
+    soup_row = BeautifulSoup(html_with_row, "html.parser")
+    cols = c._extract_row_cells(soup_row)  # pylint: disable=protected-access
+    assert cols is not None
+    assert len(cols) == 4
+    assert cols[0].get_text(strip=True) == "Col1"
+
+    # Covers line 275: return _norm(p_tag.get_text(...)) (needs a <p>)
+    html_with_p = "<div><p>   Hello   world   </p></div>"
+    soup_p = BeautifulSoup(html_with_p, "html.parser")
+    comment = c._extract_comments(soup_p)  # pylint: disable=protected-access
+    assert comment == "Hello world"

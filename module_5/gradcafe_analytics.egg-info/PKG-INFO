@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: gradcafe-analytics
+Version: 0.1.0
+Summary: Grad Cafe Analytics Web Application (Module 5)
+Author: Your Name
+Requires-Python: >=3.10
+Requires-Dist: flask==3.0.2
+Requires-Dist: psycopg[binary]==3.2.13
+Requires-Dist: beautifulsoup4
+Requires-Dist: urllib3
+Requires-Dist: python-dotenv
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: pylint; extra == "dev"
+Requires-Dist: pydeps; extra == "dev"
+Dynamic: author
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

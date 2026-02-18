@@ -207,3 +207,106 @@ def test_query_data_get_conn_raises_when_database_url_missing(monkeypatch):
 
     with pytest.raises(RuntimeError, match="DATABASE_URL is not set"):
         qd.get_conn()
+
+
+@pytest.mark.db
+def test_db_config_raises_when_missing_env(monkeypatch):
+    import src.db_config as db_config
+
+    for k in ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]:
+        monkeypatch.delenv(k, raising=False)
+
+    with pytest.raises(RuntimeError, match="Missing required DB environment variables"):
+        db_config.get_db_settings()
+
+
+@pytest.mark.db
+def test_db_config_build_db_url_encodes_password(monkeypatch):
+    import src.db_config as db_config
+
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_NAME", "gradcafe")
+    monkeypatch.setenv("DB_USER", "gradcafe_app")
+    monkeypatch.setenv("DB_PASSWORD", "p@ss:word!")  # special chars
+
+    url = db_config.build_db_url_from_env()
+    assert url.startswith("postgresql://gradcafe_app:")
+    assert "localhost:5432/gradcafe" in url
+    assert "p@ss:word!" not in url  # should be URL-encoded
+
+
+@pytest.mark.db
+def test_load_data_resolve_db_url_db_star_fallback(monkeypatch):
+    import src.load_data as load_mod
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_NAME", "gradcafe")
+    monkeypatch.setenv("DB_USER", "gradcafe_app")
+    monkeypatch.setenv("DB_PASSWORD", "dummy")
+
+    resolved = load_mod._resolve_db_url(None)  # pylint: disable=protected-access
+    assert "localhost" in resolved
+    assert "/gradcafe" in resolved
+
+
+@pytest.mark.db
+def test_load_data_resolve_db_url_raises_when_all_missing(monkeypatch):
+    import src.load_data as load_mod
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    for k in ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]:
+        monkeypatch.delenv(k, raising=False)
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL is not set"):
+        load_mod._resolve_db_url(None)  # pylint: disable=protected-access
+
+
+@pytest.mark.db
+def test_query_data_clamp_limit_bad_input_and_bounds():
+    import src.query_data as qd
+
+    assert qd.clamp_limit("not-an-int") == qd.DEFAULT_LIMIT
+    assert qd.clamp_limit(None) == qd.DEFAULT_LIMIT
+    assert qd.clamp_limit(0) == qd.MIN_LIMIT
+    assert qd.clamp_limit(9999) == qd.MAX_LIMIT
+
+
+@pytest.mark.db
+def test_query_data_resolve_db_url_db_star_fallback(monkeypatch):
+    import src.query_data as qd
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_NAME", "gradcafe")
+    monkeypatch.setenv("DB_USER", "gradcafe_app")
+    monkeypatch.setenv("DB_PASSWORD", "dummy")
+
+    resolved = qd._resolve_db_url(None)  # pylint: disable=protected-access
+    assert "localhost" in resolved
+    assert "/gradcafe" in resolved
+
+
+@pytest.mark.db
+def test_query_data_resolve_db_url_raises_when_all_missing(monkeypatch):
+    import src.query_data as qd
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    for k in ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]:
+        monkeypatch.delenv(k, raising=False)
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL is not set"):
+        qd._resolve_db_url(None)  # pylint: disable=protected-access
+
+
+@pytest.mark.db
+def test_q3_returns_nones_when_no_row(monkeypatch):
+    import src.query_data as qd
+
+    # Force fetch_row to return None so q3 takes the "no row" branch
+    monkeypatch.setattr(qd, "fetch_row", lambda *_a, **_k: None)
+
+    assert qd.q3() == (None, None, None, None)

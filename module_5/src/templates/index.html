@@ -25,7 +25,7 @@
             <button data-testid="update-analysis-btn" class="btn" type="submit" {% if pull_running %}disabled{% endif %}>
                 Update Analysis
             </button>
-            </form>
+        </form>
       </div>
     </div>
 
@@ -43,5 +43,32 @@
     {% endfor %}
 
   </div>
+
+  <script>
+    async function postAndRefresh(url) {
+      try {
+        await fetch(url, { method: "POST" });
+      } catch (e) {
+        // If something fails (server down, etc.), just fall back to reload.
+      }
+      window.location.reload();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const forms = document.querySelectorAll("form[action]");
+      forms.forEach((form) => {
+        const action = form.getAttribute("action") || "";
+        const isPull = action.includes("pull-data");
+        const isUpdate = action.includes("update-analysis");
+
+        if (isPull || isUpdate) {
+          form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            postAndRefresh(form.action);
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>
