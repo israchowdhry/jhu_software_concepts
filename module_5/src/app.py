@@ -20,9 +20,15 @@ from . import query_data
 from .scrape import scrape_data
 from .clean import clean_data
 from .load_data import load_data
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=str(BASE_DIR / "templates"),
+    static_folder=str(BASE_DIR / "static"),
+)
 
 # Store shared state in app.config instead of module globals
 app.config["RESULTS_CACHE"] = []
@@ -65,7 +71,6 @@ def write_jsonl(rows, path):
     with open(path, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-
 
 def build_results():
     """

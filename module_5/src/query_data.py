@@ -8,83 +8,120 @@ The queries compute statistics such as applicant counts, averages,
 acceptance rates, and program-level aggregations.
 """
 
-import os
+from __future__ import annotations
+
+from typing import Any, Sequence
+
 import psycopg
+from psycopg import sql
+
+from .db_config import get_db_settings
+
+# Enforced query LIMIT bounds (Step 2 requirement)
+MIN_LIMIT = 1
+MAX_LIMIT = 100
+DEFAULT_LIMIT = 25
 
 
-def get_conn(db_url=None):
+def clamp_limit(raw_limit: Any, default: int = DEFAULT_LIMIT) -> int:
+    """
+    Clamp a LIMIT value to a safe integer range.
+
+    The assignment requires every query to have an inherent LIMIT, and
+    to enforce a maximum allowed limit (example: clamp to 1–100).
+
+    :param raw_limit: User-supplied or external limit input.
+    :type raw_limit: any
+    :param default: Default limit used when input is missing/invalid.
+    :type default: int
+    :return: A safe LIMIT value within [MIN_LIMIT, MAX_LIMIT].
+    :rtype: int
+    """
+    try:
+        value = int(raw_limit)
+    except (TypeError, ValueError):
+        value = default
+    return max(MIN_LIMIT, min(MAX_LIMIT, value))
+
+
+def get_conn() -> psycopg.Connection:
     """
     Establish a connection to the PostgreSQL database.
 
-    If ``db_url`` is not provided, the function attempts to read the
-    ``DATABASE_URL`` environment variable.
+    This function reads DB connection values from environment variables
+    via ``get_db_settings()`` (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD).
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
     :return: Active PostgreSQL connection object.
     :rtype: psycopg.Connection
-    :raises RuntimeError: If no database URL is available.
+    :raises RuntimeError: If required environment variables are missing.
     """
-    db_url = db_url or os.getenv("DATABASE_URL")
-    if not db_url:
-        raise RuntimeError("DATABASE_URL is not set")
-    return psycopg.connect(db_url)
+    settings = get_db_settings()
+    return psycopg.connect(**settings)
 
 
-def fetch_one(sql: str, params=(), db_url=None):
+def fetch_one(stmt: sql.SQL | sql.Composed, params: Sequence[Any] = ()) -> Any:
     """
     Execute a SQL query and return a single scalar value.
 
-    :param sql: SQL query string.
-    :type sql: str
+    This function separates:
+      - statement construction (composed SQL object)
+      - execution + bound parameters (cursor.execute(stmt, params))
+
+    :param stmt: SQL statement as a psycopg composed SQL object.
+    :type stmt: psycopg.sql.SQL or psycopg.sql.Composed
     :param params: Parameters to safely substitute into the query.
-    :type params: tuple
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
-    :return: First column of the first row returned by the query.
+    :type params: Sequence[any]
+    :return: First column of the first row returned by the query (or None).
     :rtype: any
     """
-    with get_conn(db_url=db_url) as conn:
+    with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, params)
-            return cur.fetchone()[0]
+            cur.execute(stmt, params)
+            row = cur.fetchone()
+            return row[0] if row else None
 
 
-def fetch_row(sql: str, params=(), db_url=None):
+def fetch_row(
+    stmt: sql.SQL | sql.Composed,
+    params: Sequence[Any] = (),
+) -> tuple[Any, ...] | None:
     """
     Execute a SQL query and return a single row.
 
-    :param sql: SQL query string.
-    :type sql: str
+    :param stmt: SQL statement as a psycopg composed SQL object.
+    :type stmt: psycopg.sql.SQL or psycopg.sql.Composed
     :param params: Parameters to safely substitute into the query.
-    :type params: tuple
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
-    :return: First row returned by the query.
-    :rtype: tuple
+    :type params: Sequence[any]
+    :return: First row returned by the query (or None).
+    :rtype: tuple or None
     """
-    with get_conn(db_url=db_url) as conn:
+    with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, params)
+            cur.execute(stmt, params)
             return cur.fetchone()
 
 
-def fetch_all(sql: str, params=(), db_url=None):
+def fetch_all(
+    stmt: sql.SQL | sql.Composed,
+    params: Sequence[Any] = (),
+) -> list[tuple[Any, ...]]:
     """
     Execute a SQL query and return all rows.
 
-    :param sql: SQL query string.
-    :type sql: str
+    Note: The assignment requires every query to have an inherent LIMIT.
+    Ensure the provided ``stmt`` includes LIMIT and that the limit value
+    is clamped by the calling function.
+
+    :param stmt: SQL statement as a psycopg composed SQL object.
+    :type stmt: psycopg.sql.SQL or psycopg.sql.Composed
     :param params: Parameters to safely substitute into the query.
-    :type params: tuple
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :type params: Sequence[any]
     :return: All rows returned by the query.
     :rtype: list[tuple]
     """
-    with get_conn(db_url=db_url) as conn:
+    with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, params)
+            cur.execute(stmt, params)
             return cur.fetchall()
 
 
@@ -92,59 +129,54 @@ def fetch_all(sql: str, params=(), db_url=None):
 # Q1
 # -------------------------------
 
-Q1_SQL = "SELECT COUNT(*) FROM applicants WHERE term = %s;"
+Q1_SQL = sql.SQL("SELECT COUNT(*) FROM applicants WHERE term = %s LIMIT %s;")
 
 
-def q1(db_url=None):
+def q1(limit: Any = DEFAULT_LIMIT) -> int:
     """
     Return the number of applicants for Fall 2026.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Count of Fall 2026 applicants.
     :rtype: int
     """
-    return fetch_one(
-        Q1_SQL,
-        ("Fall 2026",),
-        db_url=db_url
-    )
+    return int(fetch_one(Q1_SQL, ("Fall 2026", clamp_limit(limit))) or 0)
 
 
 # -------------------------------
 # Q2
 # -------------------------------
 
-Q2_SQL = """
+Q2_SQL = sql.SQL("""
 SELECT ROUND(
     100.0 * SUM(CASE WHEN us_or_international NOT IN ('American','Other') THEN 1 ELSE 0 END)
     / NULLIF(COUNT(*), 0),
     2
 )
-FROM applicants;
-"""
+FROM applicants
+LIMIT %s;
+""")
 
 
-def q2(db_url=None):
+def q2(limit: Any = DEFAULT_LIMIT) -> float:
     """
     Return the percentage of international applicants (rounded to 2 decimals).
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Percentage of international applicants.
     :rtype: float
     """
-    return fetch_one(
-        Q2_SQL,
-        db_url=db_url
-    )
+    value = fetch_one(Q2_SQL, (clamp_limit(limit),))
+    return float(value) if value is not None else 0.0
 
 
 # -------------------------------
 # Q3
 # -------------------------------
 
-Q3_SQL = """
+Q3_SQL = sql.SQL("""
 SELECT
   ROUND(AVG(gpa)::numeric, 2) AS avg_gpa,
   ROUND(AVG(gre)::numeric, 2) AS avg_gre_q,
@@ -154,149 +186,150 @@ FROM applicants
 WHERE (gpa IS NULL OR (gpa BETWEEN 0 AND 4.0))
   AND (gre IS NULL OR (gre BETWEEN 130 AND 170))
   AND (gre_v IS NULL OR (gre_v BETWEEN 130 AND 170))
-  AND (gre_aw IS NULL OR (gre_aw BETWEEN 0 AND 6));
-"""
+  AND (gre_aw IS NULL OR (gre_aw BETWEEN 0 AND 6))
+LIMIT %s;
+""")
 
 
-def q3(db_url=None):
+def q3(limit: Any = DEFAULT_LIMIT) -> tuple[Any, Any, Any, Any]:
     """
     Return average GPA and GRE scores (rounded to 2 decimals).
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Tuple containing (avg_gpa, avg_gre_q, avg_gre_v, avg_gre_aw).
     :rtype: tuple[float, float, float, float]
     """
-    return fetch_row(
-        Q3_SQL,
-        db_url=db_url
-    )
+    row = fetch_row(Q3_SQL, (clamp_limit(limit),))
+    if not row:
+        return (None, None, None, None)
+    return row[0], row[1], row[2], row[3]
 
 
 # -------------------------------
 # Q4
 # -------------------------------
 
-Q4_SQL = """
+Q4_SQL = sql.SQL("""
 SELECT ROUND(AVG(gpa)::numeric, 2)
 FROM applicants
 WHERE term = %s
   AND us_or_international = %s
-  AND gpa IS NOT NULL;
-"""
+  AND gpa IS NOT NULL
+LIMIT %s;
+""")
 
 
-def q4(db_url=None):
+def q4(limit: Any = DEFAULT_LIMIT) -> float:
     """
     Return the average GPA of American students for Fall 2026.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Average GPA.
     :rtype: float
     """
-    return fetch_one(
-        Q4_SQL,
-        ("Fall 2026", "American"),
-        db_url=db_url
-    )
+    value = fetch_one(Q4_SQL, ("Fall 2026", "American", clamp_limit(limit)))
+    return float(value) if value is not None else 0.0
 
 
 # -------------------------------
 # Q5
 # -------------------------------
 
-Q5_SQL = """
+Q5_SQL = sql.SQL("""
 SELECT ROUND(
     100.0 * SUM(CASE WHEN status = 'Accepted' THEN 1 ELSE 0 END)
     / NULLIF(COUNT(*), 0),
     2
 )
 FROM applicants
-WHERE term = %s;
-"""
+WHERE term = %s
+LIMIT %s;
+""")
 
 
-def q5(db_url=None):
+def q5(limit: Any = DEFAULT_LIMIT) -> float:
     """
     Return percentage of Fall 2026 applicants who were accepted.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Acceptance percentage.
     :rtype: float
     """
-    return fetch_one(
-        Q5_SQL,
-        ("Fall 2026",),
-        db_url=db_url
-    )
+    value = fetch_one(Q5_SQL, ("Fall 2026", clamp_limit(limit)))
+    return float(value) if value is not None else 0.0
 
 
 # -------------------------------
 # Q6
 # -------------------------------
 
-Q6_SQL = """
+Q6_SQL = sql.SQL("""
 SELECT ROUND(AVG(gpa)::numeric, 2)
 FROM applicants
 WHERE COALESCE(term,'') ILIKE %s
   AND COALESCE(status,'') ILIKE %s
-  AND gpa IS NOT NULL;
-"""
+  AND gpa IS NOT NULL
+LIMIT %s;
+""")
 
 
-def q6(db_url=None):
+def q6(limit: Any = DEFAULT_LIMIT) -> float:
     """
     Return the average GPA of Fall 2026 applicants who were accepted.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Average GPA of accepted applicants.
     :rtype: float
     """
-    return fetch_one(
-        Q6_SQL,
-        ("%Fall 2026%", "%Accepted%"),
-        db_url=db_url
-    )
+    value = fetch_one(Q6_SQL, ("%Fall 2026%", "%Accepted%", clamp_limit(limit)))
+    return float(value) if value is not None else 0.0
 
 
 # -------------------------------
 # Q7
 # -------------------------------
 
-Q7_SQL = """
+Q7_SQL = sql.SQL("""
 SELECT COUNT(*)
 FROM applicants
 WHERE degree ILIKE %s
   AND program ILIKE %s
-  AND (program ILIKE %s OR program ILIKE %s);
-"""
+  AND (program ILIKE %s OR program ILIKE %s)
+LIMIT %s;
+""")
 
 
-def q7(db_url=None):
+def q7(limit: Any = DEFAULT_LIMIT) -> int:
     """
     Return the number of entries applying to JHU for a Masters in Computer Science.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Count of JHU Masters CS applicants.
     :rtype: int
     """
-    return fetch_one(Q7_SQL, (
-        "%master%",
-        "%computer science%",
-        "%johns hopkins%",
-        "%jhu%",
-    ), db_url=db_url)
+    value = fetch_one(
+        Q7_SQL,
+        (
+            "%master%",
+            "%computer science%",
+            "%johns hopkins%",
+            "%jhu%",
+            clamp_limit(limit),
+        ),
+    )
+    return int(value or 0)
 
 
 # -------------------------------
 # Q8
 # -------------------------------
 
-Q8_SQL = """
+Q8_SQL = sql.SQL("""
 SELECT COUNT(*)
 FROM applicants
 WHERE term ILIKE %s
@@ -309,38 +342,44 @@ WHERE term ILIKE %s
     OR program ILIKE %s
     OR program ILIKE %s
     OR program ILIKE %s
-  );
-"""
+  )
+LIMIT %s;
+""")
 
 
-def q8(db_url=None):
+def q8(limit: Any = DEFAULT_LIMIT) -> int:
     """
     Return count of 2026 PhD CS acceptances at Georgetown, MIT,
     Stanford, or Carnegie Mellon.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Count of matching applicants.
     :rtype: int
     """
-    return fetch_one(Q8_SQL, (
-        "%2026%",
-        "Accepted",
-        "%phd%",
-        "%computer science%",
-        "%georgetown%",
-        "%Massachusetts Institute of Technology%",
-        "%mit%",
-        "%stanford%",
-        "%carnegie mellon%",
-    ), db_url=db_url)
+    value = fetch_one(
+        Q8_SQL,
+        (
+            "%2026%",
+            "Accepted",
+            "%phd%",
+            "%computer science%",
+            "%georgetown%",
+            "%Massachusetts Institute of Technology%",
+            "%mit%",
+            "%stanford%",
+            "%carnegie mellon%",
+            clamp_limit(limit),
+        ),
+    )
+    return int(value or 0)
 
 
 # -------------------------------
 # Q9
 # -------------------------------
 
-Q9_SQL = """
+Q9_SQL = sql.SQL("""
 SELECT COUNT(*)
 FROM applicants
 WHERE COALESCE(term,'') ILIKE %s
@@ -353,30 +392,36 @@ WHERE COALESCE(term,'') ILIKE %s
     OR COALESCE(llm_generated_university,'') ILIKE %s
     OR COALESCE(llm_generated_university,'') ILIKE %s
     OR COALESCE(llm_generated_university,'') ILIKE %s
-  );
-"""
+  )
+LIMIT %s;
+""")
 
 
-def q9(db_url=None):
+def q9(limit: Any = DEFAULT_LIMIT) -> int:
     """
     Return count of 2026 PhD CS acceptances using LLM-generated fields.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Count of matching applicants using LLM fields.
     :rtype: int
     """
-    return fetch_one(Q9_SQL, (
-        "%2026%",
-        "Accepted",
-        "%phd%",
-        "%computer science%",
-        "%georgetown%",
-        "%massachusetts institute of technology%",
-        "%mit%",
-        "%stanford%",
-        "%carnegie mellon%",
-    ), db_url=db_url)
+    value = fetch_one(
+        Q9_SQL,
+        (
+            "%2026%",
+            "Accepted",
+            "%phd%",
+            "%computer science%",
+            "%georgetown%",
+            "%massachusetts institute of technology%",
+            "%mit%",
+            "%stanford%",
+            "%carnegie mellon%",
+            clamp_limit(limit),
+        ),
+    )
+    return int(value or 0)
 
 
 # -------------------------------
@@ -387,52 +432,56 @@ EXTRA_1_QUESTION = (
     "What are the top 3 most common universities/program "
     "names in the dataset?"
 )
-EXTRA_1_SQL = """
+EXTRA_1_SQL = sql.SQL("""
 SELECT program, COUNT(*) AS n
 FROM applicants
 WHERE program IS NOT NULL AND program <> ''
 GROUP BY program
 ORDER BY n DESC
-LIMIT 3;
-"""
+LIMIT %s;
+""")
 
-def extra_1(db_url=None):
+
+def extra_1(limit: Any = 3) -> list[tuple[str, int]]:
     """
-    Return the top 3 most common program names.
+    Return the top most common program names.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Number of programs to return (clamped to 1–100).
+    :type limit: any
     :return: List of (program, count) tuples.
     :rtype: list[tuple[str, int]]
     """
-    return fetch_all(EXTRA_1_SQL, db_url=db_url)
+    rows = fetch_all(EXTRA_1_SQL, (clamp_limit(limit, default=3),))
+    return [(str(program), int(n)) for program, n in rows]
 
 
 EXTRA_2_QUESTION = "How many people got rejected from JHU?"
-EXTRA_2_SQL = """
+EXTRA_2_SQL = sql.SQL("""
 SELECT COUNT(*)
 FROM applicants
 WHERE COALESCE(status,'') = %s
-  AND (program ILIKE %s OR program ILIKE %s);
-"""
+  AND (program ILIKE %s OR program ILIKE %s)
+LIMIT %s;
+""")
 
-def extra_2(db_url=None):
+
+def extra_2(limit: Any = DEFAULT_LIMIT) -> int:
     """
     Return count of applicants rejected from JHU.
 
-    :param db_url: Optional database connection URL.
-    :type db_url: str or None
+    :param limit: Maximum rows allowed (clamped to 1–100).
+    :type limit: any
     :return: Count of rejected JHU applicants.
     :rtype: int
     """
-    return fetch_one(EXTRA_2_SQL, (
-        "Rejected",
-        "%johns hopkins%",
-        "%jhu%",
-    ), db_url=db_url)
+    value = fetch_one(
+        EXTRA_2_SQL,
+        ("Rejected", "%johns hopkins%", "%jhu%", clamp_limit(limit)),
+    )
+    return int(value or 0)
 
 
-def main():
+def main() -> None:
     """
     Execute all analytical queries and print results to the console.
 
