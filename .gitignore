@@ -35,3 +35,7 @@ module_4/tmp_applicant_data.json
 module_4/llm_extend_applicant_data.jsonl
 
 module_4/docs/build/doctrees/
+
+.env
+
+*.egg-info/
