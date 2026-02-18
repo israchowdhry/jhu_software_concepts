@@ -26,6 +26,7 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -40,10 +41,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
+
       # 1) Run Pylint and fail if score < 10
       - name: Pylint (fail-under=10)
         run: |
           pylint src --fail-under=10
+
       # Ensure Postgres client tools exist (pg_isready)
       - name: Install Postgres client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
@@ -56,12 +59,14 @@ jobs:
           done
           echo "Postgres did not become ready in time"
           exit 1
+
       # 2) Run tests (pytest.ini enforces cov-fail-under=100)
       - name: Pytest
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
         run: |
           pytest
+
       # 3) Generate dependency.svg using pydeps + Graphviz and fail if missing
       - name: Install Graphviz
         run: sudo apt-get update && sudo apt-get install -y graphviz
@@ -70,6 +75,7 @@ jobs:
         run: |
           pydeps src --noshow -T svg -o dependency.svg
           test -f dependency.svg
+
       - name: Upload dependency.svg artifact
         uses: actions/upload-artifact@v4
         with:
