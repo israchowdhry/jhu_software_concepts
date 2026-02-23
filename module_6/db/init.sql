@@ -1,10 +1,19 @@
 CREATE TABLE IF NOT EXISTS applicants (
-    id SERIAL PRIMARY KEY,
-    program_name TEXT,
-    university TEXT,
+    p_id SERIAL PRIMARY KEY,
+    program TEXT,
     comments TEXT,
-    date_added TEXT,
-    entry_url TEXT
+    date_added DATE,
+    url TEXT UNIQUE,
+    status TEXT,
+    term TEXT,
+    us_or_international TEXT,
+    gpa FLOAT,
+    gre FLOAT,
+    gre_v FLOAT,
+    gre_aw FLOAT,
+    degree TEXT,
+    llm_generated_program TEXT,
+    llm_generated_university TEXT
 );
 
 CREATE TABLE IF NOT EXISTS ingestion_watermarks (

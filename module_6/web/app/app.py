@@ -20,7 +20,10 @@ from typing import Any
 from flask import Flask, jsonify, render_template
 
 from . import query_data
-from ..publisher import publish_task
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from publisher import publish_task
 
 BASE_DIR = Path(__file__).resolve().parent
 
