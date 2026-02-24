@@ -1,30 +1,22 @@
 """
 Flask web application for Grad Cafe analytics.
 
-This module provides the web interface for:
-
-- Triggering the ETL pipeline (scrape → clean → load)
-- Running database analytics queries
-- Displaying results in a web dashboard
-- Managing background tasks safely using threading
-
-It integrates the scraping, cleaning, and database layers
-into a single interactive application.
+Web tier responsibilities (Module 6):
+- Display analytics results
+- Enqueue background tasks via RabbitMQ (no long-running work in request thread)
 """
 
 from __future__ import annotations
 
-import json
 import threading
 from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, render_template
 
-from src.worker.etl.clean import clean_data
-from src.db.load_data import load_data
-from src.worker.etl.incremental_scrape import scrape_data
+import pika
 
+from src.web.publisher import publish_task
 from src.worker.etl import query_data
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -35,65 +27,25 @@ app = Flask(
     static_folder=str(BASE_DIR / "static"),
 )
 
-# Shared State (tests require these names at module level)
-
 STATE_LOCK = threading.Lock()
 PULL_STATE: dict[str, Any] = {"running": False, "message": ""}
 
-# Keep these names defined at module level for tests,
-# but store the mutable state on the Flask app to avoid globals.
+# Tests expect these names at module level
 RESULTS_CACHE: list[dict[str, str]] = []
 HAS_RESULTS: bool = False
 
-# App-attached state (no global statements needed)
+# App-attached state (avoid globals for mutable objects)
 app.results_cache: list[dict[str, str]] = []
 app.has_results: bool = False
 
-JSONL_PATH = "llm_extend_applicant_data.jsonl"
-
 
 def create_app() -> Flask:
-    """
-    Create and return the Flask application instance.
-
-    This factory pattern allows pytest and other tools
-    to instantiate the app without running the server.
-
-    :return: Configured Flask application instance
-    :rtype: flask.Flask
-    """
+    """Application factory used by tests and run.py."""
     return app
 
 
-def write_jsonl(rows: list[dict[str, Any]], path: str) -> None:
-    """
-    Write cleaned applicant records to a JSONL file.
-
-    Each record is written as a separate JSON line.
-
-    :param rows: List of cleaned applicant dictionaries
-    :type rows: list[dict]
-    :param path: Output file path
-    :type path: str
-    :return: None
-    :rtype: None
-    """
-    with open(path, "w", encoding="utf-8") as file_handle:
-        for row in rows:
-            file_handle.write(json.dumps(row, ensure_ascii=False) + "\n")
-
-
 def build_results() -> list[dict[str, str]]:
-    """
-    Execute all analytics queries and construct dashboard results.
-
-    This function runs database queries defined in ``query_data``
-    and formats them into question/answer pairs for display
-    in the web interface.
-
-    :return: List of formatted analysis result dictionaries
-    :rtype: list[dict]
-    """
+    """Run DB queries and format into dashboard output."""
     q1 = query_data.q1()
     q2 = query_data.q2()
     q3 = query_data.q3()
@@ -112,125 +64,38 @@ def build_results() -> list[dict[str, str]]:
     )
 
     return [
+        {"question": "How many entries have applied for Fall 2026?", "answer": f"Applicant count: {q1}"},
+        {"question": "What percentage are International (not American/Other)?", "answer": f"Percent International: {q2:.2f}%"},
         {
-            "question": "How many entries have applied for Fall 2026?",
-            "answer": f"Applicant count: {q1}",
-        },
-        {
-            "question": "What percentage are International (not American/Other)?",
-            # REQUIRED: percentages must render with exactly two decimals
-            "answer": f"Percent International: {q2:.2f}%",
-        },
-        {
-            "question": (
-                "What is the average GPA, GRE, GRE V, GRE AW of applicants "
-                "who provided these metrics?"
-            ),
+            "question": "What is the average GPA, GRE, GRE V, GRE AW of applicants who provided these metrics?",
             "answer": q3_answer,
         },
+        {"question": "What is the average GPA of American students in Fall 2026?", "answer": f"Avg GPA American: {q4}"},
+        {"question": "What percent of Fall 2026 entries are Acceptances?", "answer": f"Acceptance percent: {q5:.2f}%"},
+        {"question": "What is the average GPA of Fall 2026 applicants who are Acceptances?", "answer": f"Avg GPA Acceptances: {q6}"},
         {
-            "question": "What is the average GPA of American students in Fall 2026?",
-            "answer": f"Avg GPA American: {q4}",
-        },
-        {
-            "question": "What percent of Fall 2026 entries are Acceptances?",
-            # REQUIRED: percentages must render with exactly two decimals
-            "answer": f"Acceptance percent: {q5:.2f}%",
-        },
-        {
-            "question": "What is the average GPA of Fall 2026 applicants who are Acceptances?",
-            "answer": f"Avg GPA Acceptances: {q6}",
-        },
-        {
-            "question": (
-                "How many entries are from applicants who applied to JHU for a "
-                "masters in Computer Science?"
-            ),
+            "question": "How many entries are from applicants who applied to JHU for a masters in Computer Science?",
             "answer": f"Count: {q7}",
         },
+        {"question": "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD in CS?", "answer": f"Count: {q8}"},
         {
-            "question": "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD in CS?",
-            "answer": f"Count: {q8}",
-        },
-        {
-            "question": (
-                "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD in CS "
-                "using LLM Generated fields?"
-            ),
+            "question": "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD in CS using LLM Generated fields?",
             "answer": f"Count using LLM fields: {q9}",
         },
-        {
-            "question": query_data.EXTRA_1_QUESTION,
-            "answer": f"{extra1}",
-        },
-        {
-            "question": query_data.EXTRA_2_QUESTION,
-            "answer": f"{extra2}",
-        },
+        {"question": query_data.EXTRA_1_QUESTION, "answer": f"{extra1}"},
+        {"question": query_data.EXTRA_2_QUESTION, "answer": f"{extra2}"},
     ]
-
-
-def _background_pull() -> None:
-    """
-    Execute the full ETL pipeline in a background thread.
-
-    This function:
-
-    - Scrapes new Grad Cafe entries
-    - Cleans the raw HTML data
-    - Writes cleaned JSONL
-    - Loads data into PostgreSQL
-    - Updates shared application state safely
-
-    Thread locking ensures safe state updates.
-
-    :return: None
-    :rtype: None
-    """
-    with STATE_LOCK:
-        PULL_STATE["running"] = True
-        PULL_STATE["message"] = "Pulling new data... please wait."
-
-    try:
-        raw_rows = scrape_data()
-        cleaned_rows = clean_data(raw_rows)
-        write_jsonl(cleaned_rows, JSONL_PATH)
-        load_data(JSONL_PATH)
-
-        with STATE_LOCK:
-            PULL_STATE["message"] = (
-                "Pull complete! Click 'Update Analysis' to refresh results."
-            )
-    except (RuntimeError, OSError, ValueError) as exc:
-        with STATE_LOCK:
-            PULL_STATE["message"] = f"Pull failed: {exc}"
-    finally:
-        with STATE_LOCK:
-            PULL_STATE["running"] = False
 
 
 @app.route("/analysis")
 def analysis():
-    """
-    Route alias for the homepage analysis view.
-
-    :return: Rendered index page
-    :rtype: flask.Response
-    """
+    """Route alias for the homepage analysis view."""
     return index()
 
 
 @app.route("/")
 def index():
-    """
-    Render the homepage displaying cached analysis results.
-
-    If results are not cached and no background job is running,
-    results are generated automatically.
-
-    :return: Rendered HTML page
-    :rtype: flask.Response
-    """
+    """Render the homepage displaying cached analysis results."""
     with STATE_LOCK:
         if not app.has_results and not PULL_STATE["running"]:
             app.results_cache = build_results()
@@ -253,43 +118,40 @@ def index():
 @app.route("/pull-data", methods=["POST"])
 def pull_data():
     """
-    Trigger the background ETL pipeline.
+    Enqueue scrape_new_data.
 
-    Returns HTTP 409 if a job is already running.
-
-    :return: JSON response indicating success or busy status
-    :rtype: flask.Response
+    Returns:
+    - 202 when queued
+    - 503 if RabbitMQ is unavailable
     """
-    with STATE_LOCK:
-        if PULL_STATE["running"]:
-            return jsonify({"busy": True}), 409
+    try:
+        publish_task("scrape_new_data", payload={})
+    except (KeyError, pika.exceptions.AMQPError, OSError, RuntimeError, ValueError) as exc:
+        return jsonify({"queued": False, "error": str(exc)}), 503
 
-    threading.Thread(target=_background_pull, daemon=True).start()
-    return jsonify({"ok": True}), 200
+    with STATE_LOCK:
+        PULL_STATE["message"] = "Request queued: scrape_new_data. Refresh in a moment."
+    return jsonify({"queued": True}), 202
 
 
 @app.route("/update-analysis", methods=["POST"])
 def update_analysis():
     """
-    Recompute analysis results from the database.
+    Enqueue recompute_analytics.
 
-    Returns HTTP 409 if background ETL is currently running.
-
-    :return: JSON response indicating success or busy status
-    :rtype: flask.Response
+    Returns:
+    - 202 when queued
+    - 503 if RabbitMQ is unavailable
     """
+    try:
+        publish_task("recompute_analytics", payload={})
+    except (KeyError, pika.exceptions.AMQPError, OSError, RuntimeError, ValueError) as exc:
+        return jsonify({"queued": False, "error": str(exc)}), 503
+
     with STATE_LOCK:
-        if PULL_STATE["running"]:
-            return jsonify({"busy": True}), 409
-
-    new_results = build_results()
-
-    with STATE_LOCK:
-        app.results_cache = new_results
-        app.has_results = True
-        PULL_STATE["message"] = "Analysis updated."
-
-    return jsonify({"ok": True}), 200
+        PULL_STATE["message"] = "Request queued: recompute_analytics. Refresh in a moment."
+        app.has_results = False
+    return jsonify({"queued": True}), 202
 
 
 if __name__ == "__main__":
