@@ -64,22 +64,31 @@ def build_results() -> list[dict[str, str]]:
     )
 
     return [
-        {"question": "How many entries have applied for Fall 2026?", "answer": f"Applicant count: {q1}"},
-        {"question": "What percentage are International (not American/Other)?", "answer": f"Percent International: {q2:.2f}%"},
+        {"question": "How many entries have applied for Fall 2026?",
+         "answer": f"Applicant count: {q1}"},
+        {"question": "What percentage are International (not American/Other)?",
+         "answer": f"Percent International: {q2:.2f}%"},
         {
-            "question": "What is the average GPA, GRE, GRE V, GRE AW of applicants who provided these metrics?",
+            "question": "What is the average GPA, GRE, GRE V, GRE AW of applicants "
+                        "who provided these metrics?",
             "answer": q3_answer,
         },
-        {"question": "What is the average GPA of American students in Fall 2026?", "answer": f"Avg GPA American: {q4}"},
-        {"question": "What percent of Fall 2026 entries are Acceptances?", "answer": f"Acceptance percent: {q5:.2f}%"},
-        {"question": "What is the average GPA of Fall 2026 applicants who are Acceptances?", "answer": f"Avg GPA Acceptances: {q6}"},
+        {"question": "What is the average GPA of American students in Fall 2026?",
+         "answer": f"Avg GPA American: {q4}"},
+        {"question": "What percent of Fall 2026 entries are Acceptances?",
+         "answer": f"Acceptance percent: {q5:.2f}%"},
+        {"question": "What is the average GPA of Fall 2026 applicants who are Acceptances?",
+         "answer": f"Avg GPA Acceptances: {q6}"},
         {
-            "question": "How many entries are from applicants who applied to JHU for a masters in Computer Science?",
+            "question": "How many entries are from applicants who applied to "
+                        "JHU for a masters in Computer Science?",
             "answer": f"Count: {q7}",
         },
-        {"question": "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD in CS?", "answer": f"Count: {q8}"},
+        {"question": "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD in CS?",
+         "answer": f"Count: {q8}"},
         {
-            "question": "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD in CS using LLM Generated fields?",
+            "question": "How many 2026 acceptances are for GU/MIT/Stanford/CMU PhD "
+                        "in CS using LLM Generated fields?",
             "answer": f"Count using LLM fields: {q9}",
         },
         {"question": query_data.EXTRA_1_QUESTION, "answer": f"{extra1}"},
