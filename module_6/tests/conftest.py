@@ -3,8 +3,8 @@ import pytest
 import psycopg
 import threading
 
-from src.app import create_app
-import src.app as app_module
+from src.web.app.app import create_app
+import src.web.app.app as app_module
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def db_url():
     """
     return os.getenv(
         "DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/postgres"
+        "postgresql://admin:password@localhost:5432/appdb"
     )
 
 

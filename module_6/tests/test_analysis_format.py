@@ -1,7 +1,7 @@
 import re
 import pytest
 from bs4 import BeautifulSoup
-import src.app as app_module
+import src.web.app.app as app_module
 
 
 @pytest.mark.analysis

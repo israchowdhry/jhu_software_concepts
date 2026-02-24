@@ -15,7 +15,7 @@ from typing import Any, Sequence
 import psycopg
 from psycopg import sql
 
-from .db_config import resolve_db_url
+from src.db.db_config import resolve_db_url
 
 def _resolve_db_url(db_url: str | None = None) -> str:
     """

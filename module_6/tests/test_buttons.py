@@ -1,5 +1,5 @@
 import pytest
-import src.app as app_module
+import src.web.app.app as app_module
 
 
 @pytest.mark.buttons

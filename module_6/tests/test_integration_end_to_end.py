@@ -4,12 +4,15 @@ import json
 import runpy
 import pytest
 import psycopg
-import src.app as app_module
-from src.load_data import load_data
-import src.clean as clean_module
+import src.web.app.app as app_module
+from src.db.load_data import load_data
+import src.worker.etl.clean as clean_module
 import flask
-import src.scrape as scrape_module
+import src.worker.etl.incremental_scrape as scrape_module
 from bs4 import BeautifulSoup
+import io
+import builtins
+from typing import Any
 
 
 @pytest.mark.integration
@@ -743,7 +746,7 @@ def test_clean_degree_backup_hits_line_154(monkeypatch):
 
 @pytest.mark.integration
 def test_clean_helpers_and_summary_fields_branches():
-    import src.clean as c
+    import src.worker.etl.clean as c
     from bs4 import BeautifulSoup
 
     assert c._norm(None) is None  # pylint: disable=protected-access
@@ -776,7 +779,7 @@ def test_clean_helpers_and_summary_fields_branches():
 
 @pytest.mark.integration
 def test_fetch_detail_fields_branches(monkeypatch):
-    import src.clean as c
+    import src.worker.etl.clean as c
 
     # entry_url missing
     assert c._fetch_detail_fields(None) == (None, None, None, None)  # pylint: disable=protected-access
@@ -820,7 +823,7 @@ def test_fetch_detail_fields_branches(monkeypatch):
 
 @pytest.mark.integration
 def test_clean_data_skip_and_degree_fill(monkeypatch):
-    import src.clean as c
+    import src.worker.etl.clean as c
 
     # skip branch: missing combined_html
     out = c.clean_data([{"entry_url": "http://x"}])
@@ -859,7 +862,7 @@ def test_clean_data_skip_and_degree_fill(monkeypatch):
 
 @pytest.mark.integration
 def test_clean_helper_guard_branches():
-    import src.clean as c
+    import src.worker.etl.clean as c
 
     # Line ~73: _parse_program_and_degree early return when program_text is falsy
     assert c._parse_program_and_degree("") == (None, None)  # pylint: disable=protected-access
@@ -872,7 +875,7 @@ def test_clean_helper_guard_branches():
 
 @pytest.mark.integration
 def test_clean_helpers_success_returns_cover_return_lines_260_275():
-    import src.clean as c
+    import src.worker.etl.clean as c
 
     # Covers line 260: return cols (needs at least one <tr> with >= 4 <td>)
     html_with_row = """
@@ -893,3 +896,302 @@ def test_clean_helpers_success_returns_cover_return_lines_260_275():
     soup_p = BeautifulSoup(html_with_p, "html.parser")
     comment = c._extract_comments(soup_p)  # pylint: disable=protected-access
     assert comment == "Hello world"
+
+import runpy
+import pytest
+from psycopg import sql
+
+import src.db.load_data as load_module
+import src.worker.etl.query_data as qd
+import src.worker.etl.incremental_scrape as inc
+
+
+@pytest.mark.integration
+def test_load_data_raises_if_no_database_url(monkeypatch):
+    # Cover resolve_db_url error path through load_data()
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(RuntimeError):
+        load_module.load_data("anything.jsonl", db_url=None)
+
+
+@pytest.mark.integration
+def test_query_data_clamp_limit_branches():
+    assert qd.clamp_limit(None) == qd.DEFAULT_LIMIT
+    assert qd.clamp_limit("not-a-number") == qd.DEFAULT_LIMIT
+    assert qd.clamp_limit(-50) == qd.MIN_LIMIT
+    assert qd.clamp_limit(9999) == qd.MAX_LIMIT
+    assert qd.clamp_limit(10) == 10
+
+
+@pytest.mark.integration
+def test_query_data_fetch_one_none_branch(monkeypatch, db_url, reset_db):
+    # Ensure fetch_one returns None when query returns no rows
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    val = qd.fetch_one(sql.SQL("SELECT 1 WHERE 1=0;"))
+    assert val is None
+
+
+@pytest.mark.integration
+def test_incremental_scrape_robots_disallowed(monkeypatch):
+    # Cover the sys.exit path in incremental_scrape
+    import urllib.robotparser as robotparser
+
+    class FakeRobot:
+        def set_url(self, url): ...
+        def read(self): ...
+        def can_fetch(self, ua, url): return False
+
+    monkeypatch.setattr(robotparser, "RobotFileParser", FakeRobot)
+
+    with pytest.raises(SystemExit):
+        inc.scrape_data(target=1)
+
+
+@pytest.mark.integration
+def test_incremental_scrape_no_table_breaks(monkeypatch):
+    # Cover "if not table: break" in incremental_scrape
+    import urllib.robotparser as robotparser
+
+    class FakeRobot:
+        def set_url(self, url): ...
+        def read(self): ...
+        def can_fetch(self, ua, url): return True
+
+    monkeypatch.setattr(robotparser, "RobotFileParser", FakeRobot)
+
+    class FakeResp:
+        status = 200
+        data = b"<html><body><p>no table</p></body></html>"
+
+    import urllib3
+    monkeypatch.setattr(urllib3, "request", lambda *a, **k: FakeResp())
+
+    rows = inc.scrape_data(target=1)
+    assert rows == []
+
+
+@pytest.mark.integration
+def test_incremental_scrape_happy_path_collects_rows(monkeypatch):
+    # Cover normal collection loop + entry_url branch
+    import urllib.robotparser as robotparser
+
+    class FakeRobot:
+        def set_url(self, url): ...
+        def read(self): ...
+        def can_fetch(self, ua, url): return True
+
+    monkeypatch.setattr(robotparser, "RobotFileParser", FakeRobot)
+
+    fake_listing_html = """
+    <html><body>
+      <table>
+        <tr>
+          <td>U</td><td>P</td><td>D</td><td>S</td>
+          <td><a href="/survey/index.php?id=1">link</a></td>
+        </tr>
+        <tr><td colspan="5">Fall 2026 International GPA 3.90</td></tr>
+        <tr><td colspan="5"><p>Great</p></td></tr>
+      </table>
+    </body></html>
+    """
+
+    class FakeResp:
+        def __init__(self, html):
+            self.status = 200
+            self.data = html.encode("utf-8")
+
+    import urllib3
+    monkeypatch.setattr(urllib3, "request", lambda *a, **k: FakeResp(fake_listing_html))
+
+    rows = inc.scrape_data(target=1)
+    assert len(rows) == 1
+    assert "combined_html" in rows[0]
+
+@pytest.mark.integration
+def test_module6_load_data_dunder_main_offline(monkeypatch) -> None:
+    """
+    Covers src/db/load_data.py __main__ guard (line 155) without hitting disk/real DB.
+    Also includes a blank line in the JSONL stream so line 112 can be exercised elsewhere too.
+    """
+    # Fake JSONL file contents (includes a blank line)
+    fake_jsonl = (
+        '{"university":"Test U","program_name":"CS","comments":"c","date_added":"January 01, 2026",'
+        '"entry_url":"http://example.com/1","applicant_status":"Accepted","start_term":"Fall 2026",'
+        '"international_american":"American","gpa":3.9,"gre_score":165,"gre_v_score":160,"gre_aw":4.5,"degree":"Masters"}\n'
+        "\n"
+    )
+
+    # Patch open() used inside load_data
+    def fake_open(*args: Any, **kwargs: Any):  # noqa: ANN401
+        return io.StringIO(fake_jsonl)
+
+    monkeypatch.setattr(builtins, "open", fake_open, raising=True)
+
+    # Patch psycopg.connect used inside load_data so it doesn't touch a real DB
+    class FakeCursor:
+        def execute(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
+            return None
+
+        def fetchone(self):
+            return (1,)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeConn:
+        def cursor(self):
+            return FakeCursor()
+
+        def commit(self) -> None:
+            return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    import psycopg
+
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **k: FakeConn(), raising=True)
+
+    # IMPORTANT: run the *correct* module_6 module path
+    runpy.run_module("src.db.load_data", run_name="__main__")
+
+
+@pytest.mark.web
+def test_module6_app_dunder_main_does_not_start_server(monkeypatch) -> None:
+    """
+    Covers src/web/app/app.py __main__ guard (line 296) without starting the server.
+    """
+    from flask import Flask
+
+    called = {"hit": False}
+
+    def fake_run(self: Flask, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
+        called["hit"] = True
+
+    monkeypatch.setattr(Flask, "run", fake_run, raising=True)
+
+    runpy.run_module("src.web.app.app", run_name="__main__")
+    assert called["hit"] is True
+
+
+@pytest.mark.integration
+def test_module6_query_data_dunder_main_prints(monkeypatch, capsys) -> None:
+    """
+    Covers src/worker/etl/query_data.py main() print lines (540–561)
+    including the extra_1 loop prints, without hitting the DB.
+    """
+    import src.worker.etl.query_data as qd
+
+    monkeypatch.setattr(qd, "q1", lambda *a, **k: 1, raising=True)
+    monkeypatch.setattr(qd, "q2", lambda *a, **k: 2.5, raising=True)
+    monkeypatch.setattr(qd, "q3", lambda *a, **k: (3.1, 160.0, 155.0, 4.0), raising=True)
+    monkeypatch.setattr(qd, "q4", lambda *a, **k: 3.2, raising=True)
+    monkeypatch.setattr(qd, "q5", lambda *a, **k: 10.0, raising=True)
+    monkeypatch.setattr(qd, "q6", lambda *a, **k: 3.3, raising=True)
+    monkeypatch.setattr(qd, "q7", lambda *a, **k: 4, raising=True)
+    monkeypatch.setattr(qd, "q8", lambda *a, **k: 5, raising=True)
+    monkeypatch.setattr(qd, "q9", lambda *a, **k: 6, raising=True)
+    monkeypatch.setattr(qd, "extra_1", lambda *a, **k: [("Program A", 2)], raising=True)
+    monkeypatch.setattr(qd, "extra_2", lambda *a, **k: 7, raising=True)
+
+    # Call main() directly so it uses the patched functions
+    qd.main()
+
+    out = capsys.readouterr().out
+    assert "Extra Q1" in out
+    assert "  2  Program A" in out
+
+
+@pytest.mark.integration
+def test_module6_query_data_dunder_main_guard(monkeypatch) -> None:
+    """
+    Covers the line:
+        if __name__ == "__main__":
+            main()
+    without executing the real main() logic.
+    """
+    import runpy
+    import src.worker.etl.query_data as qd
+
+    # Replace main() with a harmless stub
+    monkeypatch.setattr(qd, "main", lambda: None, raising=True)
+
+    # Now execute module as __main__
+    runpy.run_module("src.worker.etl.query_data", run_name="__main__")
+
+
+@pytest.mark.integration
+def test_module6_incremental_scrape_dunder_main_offline(monkeypatch, tmp_path) -> None:
+    """
+    Covers src/worker/etl/incremental_scrape.py __main__ block (lines 123–128)
+    by actually executing the module as __main__, but with all network/file work mocked.
+    """
+    import urllib3
+    import urllib.robotparser as robotparser
+    import runpy
+
+    import src.worker.etl.clean as clean_mod
+
+    # Allow robots (avoid sys.exit)
+    class FakeRobot:
+        def set_url(self, url):  # noqa: ANN001
+            return None
+
+        def read(self):  # noqa: ANN201
+            return None
+
+        def can_fetch(self, ua, url):  # noqa: ANN001, ANN201
+            return True
+
+    monkeypatch.setattr(robotparser, "RobotFileParser", FakeRobot, raising=True)
+
+    # First request returns a valid table with one good <tr> (>= 4 cols),
+    # second request returns no table so the scraper loop breaks quickly.
+    html_with_one_row = """
+    <html><body>
+      <table>
+        <tr>
+          <td>U</td><td>P</td><td>D</td><td>S</td>
+          <td><a href="/survey/index.php?id=1">link</a></td>
+        </tr>
+        <tr><td colspan="5">tag row</td></tr>
+        <tr><td colspan="5">comment row</td></tr>
+      </table>
+    </body></html>
+    """
+    html_no_table = "<html><body><p>no table</p></body></html>"
+
+    class FakeResp:
+        def __init__(self, h):  # noqa: ANN001
+            self.data = h.encode("utf-8")
+
+    calls = {"n": 0}
+
+    def fake_request(*args, **kwargs):  # noqa: ANN001, ANN201
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return FakeResp(html_with_one_row)
+        return FakeResp(html_no_table)
+
+    monkeypatch.setattr(urllib3, "request", fake_request, raising=True)
+
+    # Patch clean_data + save_data imported in __main__
+    monkeypatch.setattr(clean_mod, "clean_data", lambda rows: [{"ok": True}], raising=True)
+
+    out_file = tmp_path / "applicant_data.json"
+
+    def fake_save_data(rows, filename):  # noqa: ANN001, ANN201
+        out_file.write_text("saved", encoding="utf-8")
+
+    monkeypatch.setattr(clean_mod, "save_data", fake_save_data, raising=True)
+
+    # Now execute the module as __main__ (this hits those exact lines)
+    runpy.run_module("src.worker.etl.incremental_scrape", run_name="__main__")
+
+    assert out_file.exists()

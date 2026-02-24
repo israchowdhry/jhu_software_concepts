@@ -3,27 +3,29 @@ Flask web application for Grad Cafe analytics.
 
 This module provides the web interface for:
 
-- Triggering the ETL pipeline via RabbitMQ messaging
+- Triggering the ETL pipeline (scrape → clean → load)
 - Running database analytics queries
 - Displaying results in a web dashboard
+- Managing background tasks safely using threading
 
-It integrates the database query layer and RabbitMQ publisher
+It integrates the scraping, cleaning, and database layers
 into a single interactive application.
 """
 
 from __future__ import annotations
 
+import json
 import threading
 from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, render_template
 
-from . import query_data
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from publisher import publish_task
+from src.worker.etl.clean import clean_data
+from src.db.load_data import load_data
+from src.worker.etl.incremental_scrape import scrape_data
+
+from src.worker.etl import query_data
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -33,14 +35,21 @@ app = Flask(
     static_folder=str(BASE_DIR / "static"),
 )
 
+# Shared State (tests require these names at module level)
+
 STATE_LOCK = threading.Lock()
 PULL_STATE: dict[str, Any] = {"running": False, "message": ""}
 
+# Keep these names defined at module level for tests,
+# but store the mutable state on the Flask app to avoid globals.
 RESULTS_CACHE: list[dict[str, str]] = []
 HAS_RESULTS: bool = False
 
+# App-attached state (no global statements needed)
 app.results_cache: list[dict[str, str]] = []
 app.has_results: bool = False
+
+JSONL_PATH = "llm_extend_applicant_data.jsonl"
 
 
 def create_app() -> Flask:
@@ -54,6 +63,24 @@ def create_app() -> Flask:
     :rtype: flask.Flask
     """
     return app
+
+
+def write_jsonl(rows: list[dict[str, Any]], path: str) -> None:
+    """
+    Write cleaned applicant records to a JSONL file.
+
+    Each record is written as a separate JSON line.
+
+    :param rows: List of cleaned applicant dictionaries
+    :type rows: list[dict]
+    :param path: Output file path
+    :type path: str
+    :return: None
+    :rtype: None
+    """
+    with open(path, "w", encoding="utf-8") as file_handle:
+        for row in rows:
+            file_handle.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def build_results() -> list[dict[str, str]]:
@@ -91,6 +118,7 @@ def build_results() -> list[dict[str, str]]:
         },
         {
             "question": "What percentage are International (not American/Other)?",
+            # REQUIRED: percentages must render with exactly two decimals
             "answer": f"Percent International: {q2:.2f}%",
         },
         {
@@ -106,6 +134,7 @@ def build_results() -> list[dict[str, str]]:
         },
         {
             "question": "What percent of Fall 2026 entries are Acceptances?",
+            # REQUIRED: percentages must render with exactly two decimals
             "answer": f"Acceptance percent: {q5:.2f}%",
         },
         {
@@ -139,6 +168,45 @@ def build_results() -> list[dict[str, str]]:
             "answer": f"{extra2}",
         },
     ]
+
+
+def _background_pull() -> None:
+    """
+    Execute the full ETL pipeline in a background thread.
+
+    This function:
+
+    - Scrapes new Grad Cafe entries
+    - Cleans the raw HTML data
+    - Writes cleaned JSONL
+    - Loads data into PostgreSQL
+    - Updates shared application state safely
+
+    Thread locking ensures safe state updates.
+
+    :return: None
+    :rtype: None
+    """
+    with STATE_LOCK:
+        PULL_STATE["running"] = True
+        PULL_STATE["message"] = "Pulling new data... please wait."
+
+    try:
+        raw_rows = scrape_data()
+        cleaned_rows = clean_data(raw_rows)
+        write_jsonl(cleaned_rows, JSONL_PATH)
+        load_data(JSONL_PATH)
+
+        with STATE_LOCK:
+            PULL_STATE["message"] = (
+                "Pull complete! Click 'Update Analysis' to refresh results."
+            )
+    except (RuntimeError, OSError, ValueError) as exc:
+        with STATE_LOCK:
+            PULL_STATE["message"] = f"Pull failed: {exc}"
+    finally:
+        with STATE_LOCK:
+            PULL_STATE["running"] = False
 
 
 @app.route("/analysis")
@@ -185,41 +253,43 @@ def index():
 @app.route("/pull-data", methods=["POST"])
 def pull_data():
     """
-    Publish a scrape_new_data task to RabbitMQ.
+    Trigger the background ETL pipeline.
 
-    Returns HTTP 202 immediately after queuing the task.
-    Returns HTTP 503 if the message broker is unavailable.
+    Returns HTTP 409 if a job is already running.
 
-    :return: JSON response indicating success or error status
+    :return: JSON response indicating success or busy status
     :rtype: flask.Response
     """
-    try:
-        publish_task("scrape_new_data")
-        with STATE_LOCK:
-            PULL_STATE["message"] = "Scrape request queued!"
-        return jsonify({"ok": True, "queued": True}), 202
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 503
+    with STATE_LOCK:
+        if PULL_STATE["running"]:
+            return jsonify({"busy": True}), 409
+
+    threading.Thread(target=_background_pull, daemon=True).start()
+    return jsonify({"ok": True}), 200
 
 
 @app.route("/update-analysis", methods=["POST"])
 def update_analysis():
     """
-    Publish a recompute_analytics task to RabbitMQ.
+    Recompute analysis results from the database.
 
-    Returns HTTP 202 immediately after queuing the task.
-    Returns HTTP 503 if the message broker is unavailable.
+    Returns HTTP 409 if background ETL is currently running.
 
-    :return: JSON response indicating success or error status
+    :return: JSON response indicating success or busy status
     :rtype: flask.Response
     """
-    try:
-        publish_task("recompute_analytics")
-        with STATE_LOCK:
-            PULL_STATE["message"] = "Analytics recompute queued!"
-        return jsonify({"ok": True, "queued": True}), 202
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 503
+    with STATE_LOCK:
+        if PULL_STATE["running"]:
+            return jsonify({"busy": True}), 409
+
+    new_results = build_results()
+
+    with STATE_LOCK:
+        app.results_cache = new_results
+        app.has_results = True
+        PULL_STATE["message"] = "Analysis updated."
+
+    return jsonify({"ok": True}), 200
 
 
 if __name__ == "__main__":

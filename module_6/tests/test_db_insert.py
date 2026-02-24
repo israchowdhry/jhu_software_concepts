@@ -1,11 +1,11 @@
 import json
 import pytest
 import psycopg
-import src.app as app_module
-from src.load_data import load_data
-import src.clean as clean_module
-import src.load_data as load_module
-import src.query_data as qd
+import src.web.app.app as app_module
+from src.db.load_data import load_data
+import src.worker.etl.clean as clean_module
+import src.db.load_data as load_module
+import src.worker.etl.query_data as qd
 
 
 
@@ -118,7 +118,7 @@ def test_query_function_returns_expected_type(reset_db, db_url):
     - Query function returns expected structure/type used by analysis template
     We verify q1() returns an int.
     """
-    from src import query_data
+    from src.worker.etl import query_data
 
     with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
@@ -211,7 +211,7 @@ def test_query_data_get_conn_raises_when_database_url_missing(monkeypatch):
 
 @pytest.mark.db
 def test_db_config_raises_when_missing_env(monkeypatch):
-    import src.db_config as db_config
+    import src.db.db_config as db_config
 
     for k in ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]:
         monkeypatch.delenv(k, raising=False)
@@ -222,7 +222,7 @@ def test_db_config_raises_when_missing_env(monkeypatch):
 
 @pytest.mark.db
 def test_db_config_build_db_url_encodes_password(monkeypatch):
-    import src.db_config as db_config
+    import src.db.db_config as db_config
 
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
@@ -238,7 +238,7 @@ def test_db_config_build_db_url_encodes_password(monkeypatch):
 
 @pytest.mark.db
 def test_load_data_resolve_db_url_db_star_fallback(monkeypatch):
-    import src.load_data as load_mod
+    import src.db.load_data as load_mod
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("DB_HOST", "localhost")
@@ -254,7 +254,7 @@ def test_load_data_resolve_db_url_db_star_fallback(monkeypatch):
 
 @pytest.mark.db
 def test_load_data_resolve_db_url_raises_when_all_missing(monkeypatch):
-    import src.load_data as load_mod
+    import src.db.load_data as load_mod
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
     for k in ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]:
@@ -266,7 +266,7 @@ def test_load_data_resolve_db_url_raises_when_all_missing(monkeypatch):
 
 @pytest.mark.db
 def test_query_data_clamp_limit_bad_input_and_bounds():
-    import src.query_data as qd
+    import src.worker.etl.query_data as qd
 
     assert qd.clamp_limit("not-an-int") == qd.DEFAULT_LIMIT
     assert qd.clamp_limit(None) == qd.DEFAULT_LIMIT
@@ -276,7 +276,7 @@ def test_query_data_clamp_limit_bad_input_and_bounds():
 
 @pytest.mark.db
 def test_query_data_resolve_db_url_db_star_fallback(monkeypatch):
-    import src.query_data as qd
+    import src.worker.etl.query_data as qd
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("DB_HOST", "localhost")
@@ -292,7 +292,7 @@ def test_query_data_resolve_db_url_db_star_fallback(monkeypatch):
 
 @pytest.mark.db
 def test_query_data_resolve_db_url_raises_when_all_missing(monkeypatch):
-    import src.query_data as qd
+    import src.worker.etl.query_data as qd
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
     for k in ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"]:
@@ -304,9 +304,116 @@ def test_query_data_resolve_db_url_raises_when_all_missing(monkeypatch):
 
 @pytest.mark.db
 def test_q3_returns_nones_when_no_row(monkeypatch):
-    import src.query_data as qd
+    import src.worker.etl.query_data as qd
 
     # Force fetch_row to return None so q3 takes the "no row" branch
     monkeypatch.setattr(qd, "fetch_row", lambda *_a, **_k: None)
 
     assert qd.q3() == (None, None, None, None)
+
+import json
+import pytest
+
+
+@pytest.mark.db
+def test_load_data_skips_blank_lines(tmp_path, db_url, reset_db) -> None:
+    """
+    Covers src/db/load_data.py line 112:
+        if not line:
+            continue
+    """
+    from src.db.load_data import load_data
+
+    p = tmp_path / "sample.jsonl"
+    p.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "university": "Test U",
+                        "program_name": "CS",
+                        "comments": "c",
+                        "date_added": "January 01, 2026",
+                        "entry_url": "http://example.com/blankline-1",
+                        "applicant_status": "Accepted",
+                        "start_term": "Fall 2026",
+                        "international_american": "American",
+                        "gpa": 3.9,
+                        "gre_score": 165,
+                        "gre_v_score": 160,
+                        "gre_aw": 4.5,
+                        "degree": "Masters",
+                    }
+                ),
+                "",  # <-- blank line triggers continue
+                json.dumps(
+                    {
+                        "university": "Test U2",
+                        "program_name": "CS",
+                        "comments": "c2",
+                        "date_added": "January 02, 2026",
+                        "entry_url": "http://example.com/blankline-2",
+                        "applicant_status": "Rejected",
+                        "start_term": "Fall 2026",
+                        "international_american": "International",
+                        "gpa": 3.7,
+                        "gre_score": 160,
+                        "gre_v_score": 155,
+                        "gre_aw": 4.0,
+                        "degree": "Masters",
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    # Uses real DB from fixtures; reset_db already ensures clean table
+    load_data(str(p), db_url=db_url)
+
+
+@pytest.mark.integration
+def test_incremental_scrape_skips_rows_with_too_few_columns(monkeypatch) -> None:
+    """
+    Covers src/worker/etl/incremental_scrape.py line 92:
+        if len(cols) < 4: continue
+    """
+    import urllib3
+    import urllib.robotparser as robotparser
+    from src.worker.etl.incremental_scrape import scrape_data
+
+    class FakeRobot:
+        def set_url(self, url):  # noqa: ANN001
+            return None
+
+        def read(self):  # noqa: ANN201
+            return None
+
+        def can_fetch(self, ua, url):  # noqa: ANN001, ANN201
+            return True
+
+    monkeypatch.setattr(robotparser, "RobotFileParser", FakeRobot, raising=True)
+
+    html = """
+    <html><body>
+      <table>
+        <tr><td>1</td><td>2</td><td>3</td></tr> <!-- only 3 cols -> should continue -->
+        <tr>
+          <td>a</td><td>b</td><td>c</td><td>d</td>
+          <td><a href="/survey/index.php?id=1">link</a></td>
+        </tr>
+        <tr><td colspan="5">tag row</td></tr>
+        <tr><td colspan="5">comment row</td></tr>
+      </table>
+    </body></html>
+    """
+
+    class FakeResp:
+        def __init__(self, h):  # noqa: ANN001
+            self.data = h.encode("utf-8")
+
+    monkeypatch.setattr(urllib3, "request", lambda *a, **k: FakeResp(html), raising=True)
+
+    rows = scrape_data(target=1)
+    assert len(rows) == 1
