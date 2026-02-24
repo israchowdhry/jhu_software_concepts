@@ -620,3 +620,289 @@ def test_query_data_dunder_main_prints_all_questions(monkeypatch):
     assert "Q9 (2026 PhD CS Acceptances using LLM fields)" in out
     assert "Extra Q1:" in out
     assert "Extra Q2:" in out
+
+import json
+import pytest
+from bs4 import BeautifulSoup
+
+import src.worker.etl.clean as clean
+
+
+@pytest.mark.db
+def test_clean_norm_and_get_value_branches():
+    assert clean._norm(None) is None
+    assert clean._norm("  a   b ") == "a b"
+
+    # _get_value: missing dt
+    soup = BeautifulSoup("<dl><dt>Other</dt><dd>X</dd></dl>", "html.parser")
+    assert clean._get_value(soup, "Degree Type") is None
+
+    # _get_value: dt exists but dd missing
+    soup2 = BeautifulSoup("<dl><dt>Degree Type</dt></dl>", "html.parser")
+    assert clean._get_value(soup2, "Degree Type") is None
+
+    # _get_value: success
+    soup3 = BeautifulSoup("<dl><dt>Degree Type</dt><dd> Masters </dd></dl>", "html.parser")
+    assert clean._get_value(soup3, "Degree Type") == "Masters"
+
+
+@pytest.mark.db
+def test_clean_parse_program_and_degree_variants():
+    assert clean._parse_program_and_degree("") == (None, None)
+
+    # degree parsing with dot separator
+    prog, deg = clean._parse_program_and_degree("Computer Science · Masters")
+    assert prog == "Computer Science"
+    assert deg == "Masters"
+
+    prog2, deg2 = clean._parse_program_and_degree("Clinical Psychology · PsyD")
+    assert prog2 == "Clinical Psychology"
+    assert deg2 == "PsyD"
+
+    prog3, deg3 = clean._parse_program_and_degree("Computer Science · PhD")
+    assert prog3 == "Computer Science"
+    assert deg3 == "PhD"
+
+    # remove degree words from program text
+    prog4, deg4 = clean._parse_program_and_degree("Computer Science Masters")
+    assert prog4 == "Computer Science"
+    assert deg4 is None
+
+
+@pytest.mark.db
+def test_clean_parse_decision_and_extractors():
+    assert clean._parse_decision(None) == (None, None, None)
+
+    status, acc, rej = clean._parse_decision("Accepted 12 Feb")
+    assert status == "Accepted"
+    assert acc == "12 Feb"
+    assert rej is None
+
+    status2, acc2, rej2 = clean._parse_decision("Rejected 3 March")
+    assert status2 == "Rejected"
+    assert acc2 is None
+    assert rej2 == "3 March"
+
+    status3, _, _ = clean._parse_decision("Waitlisted")
+    assert status3 == "Waitlisted"
+
+    assert clean._extract_start_term("blah Fall 2026 blah") == "Fall 2026"
+    assert clean._extract_start_term("no term") is None
+
+    assert clean._extract_us_or_international("International applicant") == "International"
+    assert clean._extract_us_or_international("American applicant") == "American"
+    assert clean._extract_us_or_international("neither") is None
+
+    assert clean._extract_gpa("GPA 3.7") == "3.7"
+    assert clean._extract_gpa("no gpa") is None
+
+
+@pytest.mark.db
+def test_clean_extract_span_value_branches():
+    soup = BeautifulSoup("<div><span>Other</span><span>V</span></div>", "html.parser")
+    assert clean._extract_span_value(soup, "GRE General") is None  # label span missing
+
+    soup2 = BeautifulSoup("<div><span>GRE General</span></div>", "html.parser")
+    assert clean._extract_span_value(soup2, "GRE General") is None  # next span missing
+
+    soup3 = BeautifulSoup("<div><span>GRE General</span><span> 320 </span></div>", "html.parser")
+    assert clean._extract_span_value(soup3, "GRE General") == "320"
+
+
+@pytest.mark.db
+def test_clean_fetch_detail_fields_failure_paths(monkeypatch):
+    # no url
+    assert clean._fetch_detail_fields(None) == (None, None, None, None)
+
+    # request throws
+    class DummyHTTPError(Exception):
+        pass
+
+    # make urllib3.exceptions.HTTPError matchable – easiest: raise OSError (already caught)
+    monkeypatch.setattr(clean.urllib3, "request", lambda *_a, **_k: (_ for _ in ()).throw(OSError("boom")))
+    assert clean._fetch_detail_fields("http://x") == (None, None, None, None)
+
+    # non-200
+    class Resp:
+        status = 500
+        data = b""
+
+    monkeypatch.setattr(clean.urllib3, "request", lambda *_a, **_k: Resp())
+    assert clean._fetch_detail_fields("http://x") == (None, None, None, None)
+
+
+@pytest.mark.db
+def test_clean_fetch_detail_fields_success(monkeypatch):
+    html = """
+    <html>
+      <dl>
+        <dt>Degree Type</dt><dd>PhD</dd>
+      </dl>
+      <div>
+        <span>GRE General</span><span>330</span>
+        <span>GRE Verbal</span><span>165</span>
+        <span>Analytical Writing</span><span>4.5</span>
+      </div>
+    </html>
+    """
+
+    class Resp:
+        status = 200
+        data = html.encode("utf-8")
+
+    monkeypatch.setattr(clean.urllib3, "request", lambda *_a, **_k: Resp())
+
+    degree, gre_total, gre_v, gre_aw = clean._fetch_detail_fields("http://ok")
+    assert degree == "PhD"
+    assert gre_total == "330"
+    assert gre_v == "165"
+    assert gre_aw == "4.5"
+
+
+@pytest.mark.db
+def test_clean_extract_row_cells_and_comments_branches():
+    soup_empty = BeautifulSoup("<table></table>", "html.parser")
+    assert clean._extract_row_cells(soup_empty) is None
+
+    soup_short = BeautifulSoup("<table><tr><td>1</td><td>2</td><td>3</td></tr></table>", "html.parser")
+    assert clean._extract_row_cells(soup_short) is None
+
+    soup_ok = BeautifulSoup("<table><tr><td>1</td><td>2</td><td>3</td><td>4</td></tr></table>", "html.parser")
+    assert clean._extract_row_cells(soup_ok) is not None
+
+    soup_no_p = BeautifulSoup("<div>No p</div>", "html.parser")
+    assert clean._extract_comments(soup_no_p) is None
+
+    soup_with_p = BeautifulSoup("<div><p> hello   world </p></div>", "html.parser")
+    assert clean._extract_comments(soup_with_p) == "hello world"
+
+
+@pytest.mark.db
+def test_clean_extract_summary_fields_branches():
+    # malformed: no tr
+    soup0 = BeautifulSoup("<div>No table</div>", "html.parser")
+    assert clean._extract_summary_fields(soup0) is None
+
+    # malformed: fewer than 4 tds
+    soup1 = BeautifulSoup("<table><tr><td>U</td><td>P</td><td>D</td></tr></table>", "html.parser")
+    assert clean._extract_summary_fields(soup1) is None
+
+    # valid listing with p comment and content for extractors
+    listing = """
+    <table>
+      <tr>
+        <td>MIT</td>
+        <td>Computer Science · Masters</td>
+        <td>March 11, 2024</td>
+        <td>Accepted 12 Feb</td>
+      </tr>
+    </table>
+    <p> some   comment </p>
+    <div>International Fall 2026 GPA 3.7</div>
+    """
+    soup2 = BeautifulSoup(listing, "html.parser")
+    out = clean._extract_summary_fields(soup2)
+    assert out["university"] == "MIT"
+    assert out["program_name"] == "Computer Science"
+    assert out["degree"] == "Masters"
+    assert out["applicant_status"] == "Accepted"
+    assert out["acceptance_date"] == "12 Feb"
+    assert out["start_term"] == "Fall 2026"
+    assert out["international_american"] == "International"
+    assert out["gpa"] == "3.7"
+    assert out["comments"] == "some comment"
+
+
+@pytest.mark.db
+def test_clean_data_all_paths(monkeypatch):
+    # 1) missing combined_html -> skipped
+    raw_entries = [{"entry_url": "http://x"}]
+
+    # 2) malformed listing -> skipped
+    raw_entries.append({"combined_html": "<div>no table</div>", "entry_url": "http://x"})
+
+    # 3) valid listing no entry_url -> no detail fetch
+    good_listing_no_url = """
+    <table>
+      <tr><td>U</td><td>Computer Science</td><td>March 11, 2024</td><td>Waitlisted</td></tr>
+    </table>
+    """
+    raw_entries.append({"combined_html": good_listing_no_url})
+
+    # 4) valid listing with entry_url and missing degree -> will pull degree from details
+    good_listing_need_degree = """
+    <table>
+      <tr><td>U</td><td>Computer Science</td><td>March 11, 2024</td><td>Accepted 12 Feb</td></tr>
+    </table>
+    """
+    raw_entries.append({"combined_html": good_listing_need_degree, "entry_url": "http://detail"})
+
+    # Force detail fetch to return a degree and GRE values
+    monkeypatch.setattr(clean, "_fetch_detail_fields", lambda _url: ("Masters", "330", "165", "4.5"))
+
+    cleaned = clean.clean_data(raw_entries)
+
+    # Only the two valid listings should survive
+    assert len(cleaned) == 2
+
+    # Item without URL: GRE should be None, degree stays from listing parse (which is None here)
+    # program text "Computer Science" => degree None
+    assert cleaned[0]["entry_url"] is None
+    assert cleaned[0]["gre_score"] is None
+
+    # Item with URL: degree should be filled from detail and GRE populated
+    assert cleaned[1]["entry_url"] == "http://detail"
+    assert cleaned[1]["degree"] == "Masters"
+    assert cleaned[1]["gre_score"] == "330"
+    assert cleaned[1]["gre_v_score"] == "165"
+    assert cleaned[1]["gre_aw"] == "4.5"
+
+
+@pytest.mark.db
+def test_clean_save_and_load_data_roundtrip(tmp_path):
+    data = [{"a": 1}, {"b": 2}]
+    path = tmp_path / "out.json"
+
+    clean.save_data(data, filename=str(path))
+    loaded = clean.load_data(filename=str(path))
+
+    assert loaded == data
+
+import pytest
+import src.worker.etl.clean as clean
+
+
+@pytest.mark.db
+def test_parse_decision_falls_back_to_raw_text():
+    status, acc, rej = clean._parse_decision("Deferred")
+    assert status == "Deferred"
+    assert acc is None
+    assert rej is None
+
+
+@pytest.mark.db
+def test_fetch_detail_fields_sets_degree_masters(monkeypatch):
+    html = """
+    <html>
+      <dl>
+        <dt>Degree Type</dt><dd>Masters</dd>
+      </dl>
+      <div>
+        <span>GRE General</span><span>320</span>
+        <span>GRE Verbal</span><span>160</span>
+        <span>Analytical Writing</span><span>4.0</span>
+      </div>
+    </html>
+    """
+
+    class Resp:
+        status = 200
+        data = html.encode("utf-8")
+
+    monkeypatch.setattr(clean.urllib3, "request", lambda *_a, **_k: Resp())
+
+    degree, gre_total, gre_v, gre_aw = clean._fetch_detail_fields("http://detail")
+    assert degree == "Masters"
+    assert gre_total == "320"
+    assert gre_v == "160"
+    assert gre_aw == "4.0"
