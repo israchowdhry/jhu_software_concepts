@@ -1,7 +1,7 @@
 import os
-import pytest
+
 import psycopg
-import threading
+import pytest
 
 from src.web.app.app import create_app
 import src.web.app.app as app_module
@@ -59,26 +59,21 @@ def client(monkeypatch, db_url):
 
     Also:
     - sets DATABASE_URL for code under test
-    - forces background pull thread to run inline (no sleep needed)
-    - resets global state so tests don't leak into each other
+    - resets app state so tests don't leak into each other
     """
-    # Make sure DB URL is available for query_data/load_data
     monkeypatch.setenv("DATABASE_URL", db_url)
-
-    # Force threading.Thread(...).start() to run immediately in tests
-    real_thread = threading.Thread
-
-    class InlineThread(real_thread):
-        def start(self):
-            self.run()
-
-    monkeypatch.setattr(threading, "Thread", InlineThread)
 
     # Reset shared state
     app_module.PULL_STATE["running"] = False
     app_module.PULL_STATE["message"] = ""
+
+    # Backward-compatible globals (still exist in the module)
     app_module.RESULTS_CACHE[:] = []
     app_module.HAS_RESULTS = False
+
+    # New code uses app-attached state
+    app_module.app.results_cache = []
+    app_module.app.has_results = False
 
     app = create_app()
     return app.test_client()
