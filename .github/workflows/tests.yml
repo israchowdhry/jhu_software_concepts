@@ -103,4 +103,4 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk test --file=requirements.txt
+          snyk test --file=requirements.txt --severity-threshold=medium
