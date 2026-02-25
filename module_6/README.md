@@ -1,4 +1,4 @@
-SSH url: SSH url: git@github.com:israchowdhry/jhu_software_concepts.git
+SSH url: git@github.com:israchowdhry/jhu_software_concepts.git
 
 
 Dockerhub repo link: https://hub.docker.com/repository/docker/israchowdhry/module_6/general
