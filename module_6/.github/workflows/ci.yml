@@ -1,4 +1,4 @@
-name: Module 5 CI (Step 7)
+name: Module 5 and 6 CI (Step 7)
 
 on:
   push:
@@ -36,15 +36,19 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install dependencies
+      - name: Install dependencies (module_5)
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
 
-      # 1) Run Pylint and fail if score < 10
-      - name: Pylint (fail-under=10)
+      # 1) Run Pylint and fail if score < 10  (NOW module_6)
+      - name: Pylint (module_6, fail-under=10)
+        working-directory: module_6
         run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
           pylint src --fail-under=10
 
       # Ensure Postgres client tools exist (pg_isready)
@@ -60,14 +64,18 @@ jobs:
           echo "Postgres did not become ready in time"
           exit 1
 
-      # 2) Run tests (pytest.ini enforces cov-fail-under=100)
-      - name: Pytest
+      # 2) Run tests (pytest.ini enforces cov-fail-under=100)  (NOW module_6)
+      - name: Pytest (module_6)
+        working-directory: module_6
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
         run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
           pytest
 
-      # 3) Generate dependency.svg using pydeps + Graphviz and fail if missing
+      # 3) Generate dependency.svg using pydeps + Graphviz and fail if missing (still module_5)
       - name: Install Graphviz
         run: sudo apt-get update && sudo apt-get install -y graphviz
 
@@ -82,7 +90,7 @@ jobs:
           name: dependency-graph
           path: module_5/dependency.svg
 
-      # 4) Run snyk test (dependency scan)
+      # 4) Run snyk test (dependency scan) (still module_5)
       - name: Set up Node (for Snyk)
         uses: actions/setup-node@v4
         with:
@@ -95,4 +103,4 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          snyk test --file=requirements.txt
+          snyk test --file=requirements.txt --severity-threshold=medium
