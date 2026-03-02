@@ -39,3 +39,15 @@ module_4/docs/build/doctrees/
 .env
 
 *.egg-info/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Module 7 large local data
+module_7/applicant_data_SM.json
+module_7/llm_extend_applicant_data_SM.jsonl
