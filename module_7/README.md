@@ -26,4 +26,6 @@ After completion of the assignment, both the SageMaker notebook instance and the
 
 This module demonstrates secure AWS configuration, controlled IAM usage, S3-based object storage, boto3 integration within SageMaker, JSON data transformation, and production-style Docker Compose deployment on EC2.
 
+NOTES: to know ec2 deployment read: EC2_DEPLOYMENT.md
+
 Known bugs: No known bugs
