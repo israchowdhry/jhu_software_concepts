@@ -22,6 +22,8 @@ OPTIMAL_K = 85
 MAX_ITER = 100
 N_INIT = 5
 RANDOM_STATE = 42
+CLUSTER_PCA_COMPONENTS = 50
+PLOT_PCA_COMPONENTS = 2
 
 
 def load_and_prepare_data(filepath: str) -> pd.DataFrame:
@@ -66,12 +68,15 @@ def vectorize_programs(df: pd.DataFrame) -> tuple[TfidfVectorizer, object]:
     return vectorizer, tfidf_matrix
 
 
-def reduce_dimensions(tfidf_matrix: object) -> tuple[PCA, object]:
+def reduce_dimensions(
+    tfidf_matrix: object,
+    n_components: int,
+) -> tuple[PCA, object]:
     """
-    Reduce TF-IDF features to two dimensions using PCA.
+    Reduce TF-IDF features using PCA.
     """
     dense_matrix = tfidf_matrix.toarray()
-    pca = PCA(n_components=2, random_state=RANDOM_STATE)
+    pca = PCA(n_components=n_components, random_state=RANDOM_STATE)
     pca_features = pca.fit_transform(dense_matrix)
 
     print(pca_features.shape)
@@ -229,13 +234,24 @@ def main() -> None:
     print_basic_stats(df)
 
     _, tfidf_matrix = vectorize_programs(df)
-    _, pca_features = reduce_dimensions(tfidf_matrix)
 
-    initial_model = run_kmeans(pca_features, INITIAL_K)
+    # Use higher-dimensional PCA output for clustering
+    _, cluster_features = reduce_dimensions(
+        tfidf_matrix,
+        CLUSTER_PCA_COMPONENTS,
+    )
+
+    # Use 2D PCA output only for visualization
+    _, plot_features = reduce_dimensions(
+        tfidf_matrix,
+        PLOT_PCA_COMPONENTS,
+    )
+
+    initial_model = run_kmeans(cluster_features, INITIAL_K)
     df["Cluster"] = initial_model.labels_
 
     plot_initial_clusters(
-        pca_features,
+        plot_features,
         initial_model.labels_,
         "initial_cluster.png",
     )
@@ -246,11 +262,11 @@ def main() -> None:
     )
 
     plot_elbow_method(
-        pca_features,
+        cluster_features,
         "elbow.png",
     )
 
-    final_model = run_kmeans(pca_features, OPTIMAL_K)
+    final_model = run_kmeans(cluster_features, OPTIMAL_K)
     df["Cluster"] = final_model.labels_
 
     df.to_csv("grad_cafe_clustered.csv", index=False)
