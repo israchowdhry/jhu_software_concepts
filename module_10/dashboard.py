@@ -42,9 +42,12 @@ app.layout = html.Div(
         html.H1("Can the Price of a Diamond Be Determined by Its Features?"),
         html.P(
             (
-                "Diamond price is primarily driven by carat, with larger diamonds increasing in price at a nonlinear rate. "
-                "While cut quality also influences price, there is significant overlap between categories, indicating it is a secondary factor. "
-                "The visualizations show that size is the strongest predictor of value, with quality characteristics refining price differences among diamonds of similar carat."
+                "Diamond price is primarily driven by carat, with larger diamonds "
+        "increasing in price at a nonlinear rate. While cut quality also "
+        "influences price, there is significant overlap between categories, "
+        "indicating it is a secondary factor. The visualizations show that "
+        "size is the strongest predictor of value, with quality characteristics "
+        "refining price differences among diamonds of similar carat."
             ),
             style={
                 "maxWidth": "900px",
