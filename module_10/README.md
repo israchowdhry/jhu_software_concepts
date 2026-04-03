@@ -61,3 +61,5 @@ Then run the dashboard:
 ```bash
 python dashboard.py
 ```
+
+Known bugs: No Known bugs
