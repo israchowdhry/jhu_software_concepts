@@ -63,7 +63,7 @@ This program builds, trains, evaluates, and analyzes a simple two-layer neural n
 3. Place cleaned_gradcafe.json in same folder
 
 4. Run the script:
- ```bash
+   ```bash
    python neural_network.py
    ```
    
