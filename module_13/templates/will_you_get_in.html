@@ -1,10 +1,172 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Will You Get In?</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
-$END$
+  <div class="page">
+
+    <div class="topbar">
+      <h1>Will You Get In?</h1>
+
+      <div class="actions">
+        <a class="btn" href="{{ url_for('index') }}">Home</a>
+        <a class="btn" href="{{ url_for('will_you_get_in') }}">Prediction Page</a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    {% if error_message %}
+      <div class="message">{{ error_message }}</div>
+    {% endif %}
+
+    <div class="card">
+      <p class="q">Enter Applicant Information</p>
+
+      <form action="{{ url_for('will_you_get_in') }}" method="post">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="program_name">Program Name</label>
+            <input
+              type="text"
+              id="program_name"
+              name="program_name"
+              value="{{ form_data.program_name }}"
+              placeholder="Example: Biomedical Engineering"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="university">University Name</label>
+            <input
+              type="text"
+              id="university"
+              name="university"
+              value="{{ form_data.university }}"
+              placeholder="Example: Tufts University"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="start_term">Start Term</label>
+            <input
+              type="text"
+              id="start_term"
+              name="start_term"
+              value="{{ form_data.start_term }}"
+              placeholder="Example: Fall 2026"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="degree">Degree Type</label>
+            <select id="degree" name="degree">
+              <option value="">Select degree</option>
+              <option value="Masters" {% if form_data.degree == "Masters" %}selected{% endif %}>Masters</option>
+              <option value="PhD" {% if form_data.degree == "PhD" %}selected{% endif %}>PhD</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="international_american">Citizenship</label>
+            <select id="international_american" name="international_american">
+              <option value="">Select category</option>
+              <option value="American" {% if form_data.international_american == "American" %}selected{% endif %}>American</option>
+              <option value="International" {% if form_data.international_american == "International" %}selected{% endif %}>International</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="gpa">GPA</label>
+            <input
+              type="text"
+              id="gpa"
+              name="gpa"
+              value="{{ form_data.gpa }}"
+              placeholder="Example: 3.85"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="gre_score">GRE Total</label>
+            <input
+              type="text"
+              id="gre_score"
+              name="gre_score"
+              value="{{ form_data.gre_score }}"
+              placeholder="Example: 325"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="gre_v_score">GRE Verbal</label>
+            <input
+              type="text"
+              id="gre_v_score"
+              name="gre_v_score"
+              value="{{ form_data.gre_v_score }}"
+              placeholder="Example: 160"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="gre_aw">GRE AW</label>
+            <input
+              type="text"
+              id="gre_aw"
+              name="gre_aw"
+              value="{{ form_data.gre_aw }}"
+              placeholder="Example: 5.0"
+            >
+          </div>
+
+          <div class="form-group full-width">
+            <label for="comments">Comments / Applicant Statement</label>
+            <textarea
+              id="comments"
+              name="comments"
+              placeholder="Enter comments or applicant statement here..."
+            >{{ form_data.comments }}</textarea>
+            <div class="helper-text">
+              This field is optional, but the model can use it as part of the prediction.
+            </div>
+          </div>
+
+        </div>
+
+        <br>
+        <button class="btn" type="submit">Predict</button>
+      </form>
+    </div>
+
+    {% if result %}
+      <div class="card">
+        <p class="q">Prediction Result</p>
+        <p class="a">Prediction: {{ result.prediction }}</p>
+        <p class="a">Accepted Probability: {{ "%.4f"|format(result.accepted_probability) }}</p>
+        <p class="a">Rejected Probability: {{ "%.4f"|format(result.rejected_probability) }}</p>
+      </div>
+
+      <div class="card">
+        <p class="q">Unified Model Input Used</p>
+        <pre class="model-input-preview">{{ result.model_input }}</pre>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <p class="q">Disclaimer</p>
+      <p class="a">
+        {{ disclaimer }}
+      </p>
+    </div>
+
+  </div>
 </body>
 </html>

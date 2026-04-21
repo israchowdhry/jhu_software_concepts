@@ -1,10 +1,60 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grad School Cafe Admissions Predictor</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
-$END$
+  <div class="page">
+
+    <div class="topbar">
+      <h1>Grad School Cafe Admissions Predictor</h1>
+
+      <div class="actions">
+        <a class="btn" href="{{ url_for('index') }}">Home</a>
+        <a class="btn" href="{{ url_for('will_you_get_in') }}">Will You Get In?</a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="message">
+      This website includes a fine-tuned transformer model that predicts whether
+      an applicant may be accepted or rejected using self-reported Grad Cafe data.
+    </div>
+
+    <div class="card">
+      <p class="q">What this page does</p>
+      <p class="a">
+        This project combines text fields such as program name and comments with
+        structured fields such as GPA, GRE, degree type, and citizenship category
+        to generate an admissions prediction.
+      </p>
+    </div>
+
+    <div class="card">
+      <p class="q">Try the prediction page</p>
+      <p class="a">
+        Go to the “Will You Get In?” page to enter applicant information and
+        receive a model-generated prediction and probability score.
+      </p>
+      <br>
+      <a class="btn" href="{{ url_for('will_you_get_in') }}">Open Prediction Page</a>
+    </div>
+
+    <div class="card">
+      <p class="q">Disclaimer</p>
+      <p class="a">
+        This is a course project model trained on scraped, self-reported data.
+        It is not a real admissions tool and should not be treated as a real
+        admissions decision.
+      </p>
+    </div>
+
+  </div>
 </body>
 </html>

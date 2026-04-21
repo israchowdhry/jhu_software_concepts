@@ -1,0 +1,23 @@
+{
+  "model_name": "distilbert-base-uncased",
+  "max_length": 256,
+  "label_map": {
+    "0": "Rejected",
+    "1": "Accepted"
+  },
+  "text_fields": [
+    "program_name",
+    "comments",
+    "llm-generated-program",
+    "llm-generated-university",
+    "start_term"
+  ],
+  "structured_fields": [
+    "gpa",
+    "gre_score",
+    "gre_v_score",
+    "gre_aw",
+    "degree",
+    "international_american"
+  ]
+}
