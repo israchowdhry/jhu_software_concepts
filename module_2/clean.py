@@ -14,6 +14,21 @@ def _norm(text):
     return text if text else None
 
 
+# Converts unavailable placeholder values to None
+def _clean_missing(value):
+    """Return None for unavailable placeholder values.
+
+    Args:
+        value: Raw scraped value.
+
+    Returns:
+        Cleaned value, or None if the value represents missing data.
+    """
+    if value in (None, "", "null", "0", "0.00", "N/A", "n/a"):
+        return None
+    return value
+
+
 # On a detail page, extracts the <dd> value for a <dt> label
 def _get_value(soup, label):
     dt = soup.find("dt", string=re.compile(label, re.I))
@@ -174,6 +189,22 @@ def clean_data(raw_entries):
                         nxt = sp.find_next("span")
                         gre_aw = _norm(nxt.get_text(strip=True) if nxt else None)
 
+        program_name = _clean_missing(program_name)
+        university = _clean_missing(university)
+        comments = _clean_missing(comments)
+        date_added = _clean_missing(date_added)
+        entry_url = _clean_missing(entry_url)
+        applicant_status = _clean_missing(applicant_status)
+        acceptance_date = _clean_missing(acceptance_date)
+        rejection_date = _clean_missing(rejection_date)
+        start_term = _clean_missing(start_term)
+        international_american = _clean_missing(international_american)
+        gre_score = _clean_missing(gre_score)
+        gre_v_score = _clean_missing(gre_v_score)
+        gre_aw = _clean_missing(gre_aw)
+        degree = _clean_missing(degree)
+        gpa = _clean_missing(gpa)
+
         cleaned.append(
             {
                 "program_name": program_name,
@@ -196,10 +227,12 @@ def clean_data(raw_entries):
 
     return cleaned
 
+
 # Saves cleaned data to applicant_data.json
 def save_data(data, filename="applicant_data.json"):
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+
 
 # Loads cleaned data from applicant_data.json
 def load_data(filename="applicant_data.json"):

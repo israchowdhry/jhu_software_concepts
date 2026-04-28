@@ -10,6 +10,11 @@ TARGET = 30000
 
 # Checks robots.txt and exits if scraping is disallowed
 def _check_robots():
+    """Check robots.txt to confirm scraping is allowed.
+
+    Raises:
+        SystemExit: If robots.txt does not allow scraping the survey path.
+    """
     parser = robotparser.RobotFileParser()
     parser.set_url(parse.urljoin(base_url, "robots.txt"))
     parser.read()
@@ -21,13 +26,25 @@ def _check_robots():
 
 # Pulls raw rows from GradCafe listing pages
 def scrape_data(target=TARGET):
+    """Scrape raw applicant rows from GradCafe listing pages.
+
+    Args:
+        target (int): Number of raw applicant records to collect.
+
+    Returns:
+        list[dict]: Raw records containing combined HTML and entry URLs.
+
+    Raises:
+        SystemExit: If robots.txt disallows scraping.
+    """
     _check_robots()
 
     raw_rows = []
     page = 1
 
     while len(raw_rows) < target:
-        survey_url = f"{base_url}{survey_path}?page={page}"
+        query = parse.urlencode({"page": page})
+        survey_url = parse.urljoin(base_url, survey_path) + "?" + query
         print(f"Scraping page {page}, rows so far: {len(raw_rows)}")
 
         resp = urllib3.request("GET", survey_url, headers=headers)
