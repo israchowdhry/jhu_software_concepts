@@ -55,3 +55,9 @@ module_7/llm_extend_applicant_data_SM.jsonl
 # Module 8 large local data
 module_8/applicant_data_SM.json
 module_8/llm_extend_applicant_data_SM.jsonl
+
+# Module 13 large local data
+module_13/reports/trainer_output/
+mlflow.db
+__pycache__/
+*.pyc

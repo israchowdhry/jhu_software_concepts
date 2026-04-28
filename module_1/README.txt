@@ -16,7 +16,7 @@ Project structure:
 - static/: CSS and images
 - templates/: HTML templates
 
-SSH url: git@github.com:israchowdhry/jhu_software_concepts.git
+SSH url: https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_1
 
 How to run the site:
 
