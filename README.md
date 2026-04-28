@@ -107,3 +107,16 @@ Updated dashboard screenshots to display the full webpage, using multiple screen
 
 Why This Improves the Solution:
 These changes ensure the dashboard is fully visible for evaluation, eliminate redundant analysis, strengthen the overall data narrative, and improve the readability and maintainability of the code.
+
+Module 11 - MLOps Pipeline
+
+Grader Comment:
+No issues identified.
+
+Revision Made:
+The assignment received full credit, so no revisions were necessary.
+
+Why This Improves the Solution:
+The solution already followed best practices for secure SQL handling and code quality.
+
+Module 12 - Two-Layer Neural Network
