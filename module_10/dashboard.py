@@ -10,7 +10,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from dash import Dash, dcc, html
 
-from visualization import plot_interactive, plot_price_by_cut, plot_price_vs_carat
+from visualization import (
+    plot_average_price_by_clarity,
+    plot_interactive,
+    plot_price_by_cut,
+)
 
 
 def convert_figure_to_base64(figure):
@@ -22,32 +26,42 @@ def convert_figure_to_base64(figure):
     buffer.close()
     return encoded_image
 
-
+# Load the dataset used for all visualizations
 data = pd.read_csv("diamonds.csv")
 
-price_vs_carat_figure = plot_price_vs_carat(data)
+# Generate static matplotlib visualizations
+average_price_by_clarity_figure = plot_average_price_by_clarity(data)
 price_by_cut_figure = plot_price_by_cut(data)
+
+# Generate interactive Plotly visualization
 interactive_figure = plot_interactive(data)
 
-price_vs_carat_image = convert_figure_to_base64(price_vs_carat_figure)
+# Convert matplotlib figures to base64 so they can be displayed in Dash
+average_price_by_clarity_image = convert_figure_to_base64(
+    average_price_by_clarity_figure
+)
 price_by_cut_image = convert_figure_to_base64(price_by_cut_figure)
 
-plt.close(price_vs_carat_figure)
+# Close figures to free memory after conversion
+plt.close(average_price_by_clarity_figure)
 plt.close(price_by_cut_figure)
 
+# Initialize Dash application
 app = Dash(__name__)
 
 app.layout = html.Div(
     children=[
         html.H1("Can the Price of a Diamond Be Determined by Its Features?"),
+
+        # Summary of insights derived from the visualizations
         html.P(
             (
-                "Diamond price is primarily driven by carat, with larger diamonds "
-        "increasing in price at a nonlinear rate. While cut quality also "
-        "influences price, there is significant overlap between categories, "
-        "indicating it is a secondary factor. The visualizations show that "
-        "size is the strongest predictor of value, with quality characteristics "
-        "refining price differences among diamonds of similar carat."
+                "Diamond price is strongly related to carat, but clarity and cut also "
+        "help explain differences in value. The clarity visualization shows how "
+        "average price varies across different clarity grades, while the cut "
+        "distribution highlights how prices differ within each cut category. "
+        "The interactive chart then illustrates the relationship between carat "
+        "and price, with cut providing an additional dimension of detail."
             ),
             style={
                 "maxWidth": "900px",
@@ -55,9 +69,9 @@ app.layout = html.Div(
                 "marginBottom": "30px"
             }
         ),
-        html.H2("Visualization 1: Diamond Price vs Carat"),
+        html.H2("Visualization 1: Average Diamond Price by Clarity"),
         html.Img(
-            src=f"data:image/png;base64,{price_vs_carat_image}",
+            src=f"data:image/png;base64,{average_price_by_clarity_image}",
             style={"width": "70%", "display": "block", "marginBottom": "30px"}
         ),
         html.H2("Visualization 2: Price Distribution by Cut Quality"),
@@ -75,4 +89,4 @@ app.layout = html.Div(
 )
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8050)

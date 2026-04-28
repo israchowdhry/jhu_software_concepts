@@ -74,3 +74,36 @@ Reformatted EC2_DEPLOYMENT.md into a more readable structure with headings, bull
 
 Why This Improves the Solution:
 These changes make the deployment documentation easier to read and improve the notebook’s code quality so the project looks more professional and maintainable.
+
+Module 8 – Data Preparation & Statistics
+
+Grader Comment:
+In Acceptances-over-Time.png, the date should be binned into 3-day intervals.
+
+Revision Made:
+Updated the histogram to use 3-day intervals by converting decision dates into numeric values and defining histogram bins in 3-day increments.
+
+Why This Improves the Solution:
+This ensures the visualization follows the assignment requirement and produces a clearer representation of acceptance trends over time.
+
+Module 9 – Data Preparation & Models
+
+Grader Comment:
+No issues identified.
+
+Revision Made:
+The assignment received full credit, so no revisions were necessary.
+
+Why This Improves the Solution:
+The solution already followed best practices for secure SQL handling and code quality.
+
+Module 10 - Data Dashboard
+
+Grader Comment:
+dashboard.png showed the webpage truncated and did not display the full dashboard. Visualizations 1 and 3 were redundant, as both illustrated price versus carat. Additionally, dashboard.py could use more comments.
+
+Revision Made:
+Updated dashboard screenshots to display the full webpage, using multiple screenshots where necessary. Replaced the redundant first visualization with a new chart showing average diamond price by clarity, which introduces a different dimension to the analysis. Added additional comments throughout dashboard.py to explain data loading, visualization creation, and layout structure.
+
+Why This Improves the Solution:
+These changes ensure the dashboard is fully visible for evaluation, eliminate redundant analysis, strengthen the overall data narrative, and improve the readability and maintainability of the code.

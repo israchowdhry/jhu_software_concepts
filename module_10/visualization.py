@@ -11,15 +11,24 @@ import seaborn as sns
 sns.set(style="whitegrid")
 
 
-def plot_price_vs_carat(data):
-    """Create a scatter plot of price vs carat, save it, and return the figure."""
+def plot_average_price_by_clarity(data):
+    """Create a bar chart of average diamond price by clarity."""
+    clarity_order = ["I1", "SI2", "SI1", "VS2", "VS1", "VVS2", "VVS1", "IF"]
+
+    avg_price = (
+        data.groupby("clarity", observed=True)["price"]
+        .mean()
+        .reindex(clarity_order)
+        .reset_index()
+    )
+
     figure, axis = plt.subplots(figsize=(8, 6))
-    sns.scatterplot(data=data, x="carat", y="price", alpha=0.1, s=6, ax=axis)
-    axis.set_title("Diamond Price vs Carat")
-    axis.set_xlabel("Carat")
-    axis.set_ylabel("Price (USD)")
+    sns.barplot(data=avg_price, x="clarity", y="price", ax=axis)
+    axis.set_title("Average Diamond Price by Clarity")
+    axis.set_xlabel("Clarity")
+    axis.set_ylabel("Average Price (USD)")
     figure.tight_layout()
-    figure.savefig("price_vs_carat.png", dpi=300, bbox_inches="tight")
+    figure.savefig("average_price_by_clarity.png", dpi=300, bbox_inches="tight")
     return figure
 
 
@@ -57,7 +66,7 @@ def main():
     """Load dataset and generate all required visualizations."""
     data = pd.read_csv("diamonds.csv")
 
-    static_figure_one = plot_price_vs_carat(data)
+    static_figure_one = plot_average_price_by_clarity(data)
     static_figure_two = plot_price_by_cut(data)
     plot_interactive(data)
 
