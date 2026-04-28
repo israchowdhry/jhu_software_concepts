@@ -1,13 +1,102 @@
-For Part 2 of this assignment, I deployed my Module 6 multi-container microservice architecture to an Amazon EC2 instance to demonstrate a cloud-based production-style deployment. I first launched an EC2 instance using the Ubuntu 22.04 LTS AMI with instance type t3.micro. During setup, I created a new key pair for SSH access and configured the security group to allow inbound SSH (port 22) and application traffic (port 8080) from my IP address only. I explicitly did not expose PostgreSQL (5432) or RabbitMQ management (15672) publicly.
+# EC2 Deployment
 
-After the instance entered the “Running” state and passed status checks, I connected via SSH using my downloaded .pem key file. Once connected, I installed Docker and Docker Compose by adding Docker’s official repository, installing the Docker engine packages, enabling the Docker service, and adding my user to the docker group. I verified installation using docker --version and docker compose version.
+For Part 2 of this assignment, I deployed my Module 6 multi-container 
+microservice architecture to an Amazon EC2 instance to demonstrate a 
+cloud-based production-style deployment.
 
-Next, I created a module_7/ec2/ directory on the EC2 instance and added a compose file named docker-compose.ec2.yml. This compose file defined four services: db (PostgreSQL 16), rabbitmq (RabbitMQ 3.13 management image), web (my DockerHub image israchowdhry/module_6:web-v1), and worker (my DockerHub image israchowdhry/module_6:worker-v1). The web service exposed port 8080, and both web and worker services used an external .env file for environment configuration. I then created the .env file containing the required POSTGRES_*, DATABASE_URL, and RABBITMQ_URL variables.
+## EC2 Setup
 
-I pulled my published Docker images from DockerHub and started the stack using docker compose --env-file .env -f docker-compose.ec2.yml up -d. I verified container health using docker compose ps, ensuring that PostgreSQL and RabbitMQ were healthy and that the web and worker services were running.
+I launched an EC2 instance using the Ubuntu 22.04 LTS AMI with instance 
+type t3.micro. During setup, I created a new key pair for SSH access and 
+configured the security group to allow:
 
-During deployment, I encountered a 500 Internal Server Error when accessing the web application. After inspecting logs with docker logs, I determined that the applicants table did not exist in the database. I resolved this by executing the init.sql file inside the running PostgreSQL container to create the required tables, and then ran the load_data.py script from within the web container to populate the database with applicant records from the JSONL dataset. I also corrected environment variable issues, specifically ensuring that DATABASE_URL and RABBITMQ_URL were properly set and that the RabbitMQ virtual host was correctly encoded. After recreating containers to pick up updated environment variables, the worker connected successfully and began consuming tasks.
+- SSH (port 22)
+- Application traffic (port 8080)
 
-Once the database was initialized and populated, I restarted the web and worker services. The application became accessible, confirming a successful live cloud deployment. I captured screenshots of the running EC2 instance, security group configuration, docker compose ps output, and the live web application.
+Access was restricted to my IP address only. PostgreSQL (5432) and 
+RabbitMQ management (15672) were not exposed publicly.
 
-After verifying functionality, I stopped the EC2 instance to prevent unnecessary charges, as instructed. The infrastructure remains intact for use in Module 8.
+## Connecting and Installing Docker
+
+After the instance entered the “Running” state and passed status checks, 
+I connected via SSH using my .pem key file.
+
+I then installed Docker and Docker Compose by:
+- Adding Docker’s official repository
+- Installing Docker engine packages
+- Enabling the Docker service
+- Adding my user to the docker group
+
+Installation was verified using:
+- `docker --version`
+- `docker compose version`
+
+## Setting Up the Application
+
+I created a directory: module_7/ec2/. Inside it, I added a compose file named: docker-compose.ec2.yml. 
+
+
+This file defined four services:
+- **db** (PostgreSQL 16)
+- **rabbitmq** (RabbitMQ 3.13 management image)
+- **web** (DockerHub image: israchowdhry/module_6:web-v1)
+- **worker** (DockerHub image: israchowdhry/module_6:worker-v1)
+
+The web service exposed port 8080. Both web and worker services used an 
+external `.env` file for configuration.
+
+I created the `.env` file with:
+- POSTGRES_* variables
+- DATABASE_URL
+- RABBITMQ_URL
+
+## Running the Application
+
+I pulled the Docker images from DockerHub and started the stack: docker compose --env-file .env -f docker-compose.ec2.yml up -d
+
+
+I verified container health using: docker compose ps
+
+
+This confirmed PostgreSQL and RabbitMQ were healthy and all services 
+were running.
+
+## Troubleshooting Issues
+
+During deployment, I encountered a 500 Internal Server Error when 
+accessing the web application.
+
+After inspecting logs with `docker logs`, I found that the `applicants` 
+table did not exist in the database.
+
+I resolved this by:
+- Executing the `init.sql` file inside the PostgreSQL container
+- Running `load_data.py` from the web container to populate data
+
+I also corrected environment variable issues:
+- Ensured DATABASE_URL and RABBITMQ_URL were set correctly
+- Fixed RabbitMQ virtual host encoding
+
+After recreating containers, the worker connected successfully and began 
+processing tasks.
+
+## Final Deployment
+
+Once the database was initialized and populated, I restarted the web and 
+worker services.
+
+The application became accessible, confirming a successful deployment.
+
+I captured screenshots of:
+- EC2 instance
+- Security group configuration
+- `docker compose ps` output
+- Live web application
+
+## Shutdown
+
+After verification, I stopped the EC2 instance to prevent unnecessary 
+charges, as instructed.
+
+The infrastructure remains intact for use in Module 8.
+
