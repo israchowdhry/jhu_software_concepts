@@ -71,3 +71,44 @@ body {
   border-radius: 18px;
   object-fit: cover;
 }
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.page-intro {
+  font-size: 1.05rem;
+  margin-bottom: 24px;
+  color: #374151;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+}
+
+.card {
+  background: white;
+  padding: 26px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.project-card {
+  border-left: 6px solid #2563eb;
+}
+
+.project-card h3 {
+  margin-top: 0;
+  color: #111827;
+}
+
+.project-card a {
+  color: #2563eb;
+  font-weight: 600;
+}

@@ -1,0 +1,80 @@
+[
+  {
+    "title": "Module 1 – Personal Website",
+    "overview": "Built a Flask-based personal developer website using HTML and CSS to display a biography, projects, and contact information.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_1",
+    "learning": "Learned how Flask routing, HTML templates, and CSS work together to build a functional website."
+  },
+  {
+    "title": "Module 2 – Web Scraping",
+    "overview": "Developed a web scraper to collect GradCafe admissions data using urllib and BeautifulSoup and stored it as structured JSON.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_2",
+    "learning": "Learned how to extract, clean, and structure data from HTML pages using Python."
+  },
+  {
+    "title": "Module 3 – Database Queries",
+    "overview": "Loaded scraped data into a PostgreSQL database, wrote SQL queries for analysis, and displayed results in a Flask web application.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_3",
+    "learning": "Learned how to integrate databases with web applications and perform analysis using SQL."
+  },
+  {
+    "title": "Module 4 – Testing and Documentation",
+    "overview": "Built a full Pytest suite with 100% coverage and created Sphinx documentation for the GradCafe analytics application.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_4",
+    "learning": "Learned how to write automated tests and document software for maintainability."
+  },
+  {
+    "title": "Module 5 – Software Assurance + Secure SQL (SQLi Defense)",
+    "overview": "Improved application security by preventing SQL injection, enforcing safe queries, and using static analysis and dependency tools.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_5",
+    "learning": "Learned how to secure applications and enforce best practices in software assurance."
+  },
+  {
+    "title": "Module 6 – Deploy Anywhere",
+    "overview": "Refactored the application into a microservices architecture using Docker, PostgreSQL, RabbitMQ, and a background worker.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_6",
+    "learning": "Learned how to build scalable systems using containerization and asynchronous processing."
+  },
+  {
+    "title": "Module 7 – Cloud Computing",
+    "overview": "Built a cloud data pipeline using S3 and SageMaker and deployed a multi-container application to AWS EC2.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_7",
+    "learning": "Learned how to use AWS services and deploy applications in a cloud environment."
+  },
+  {
+    "title": "Module 8 – Data Preparation & Statistics",
+    "overview": "Performed data cleaning, statistical analysis, and visualization of GradCafe data using Pandas, NumPy, and Matplotlib.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_8",
+    "learning": "Learned how to analyze datasets, identify patterns, and create meaningful visualizations."
+  },
+  {
+    "title": "Module 9 – Data Preparation & Models",
+    "overview": "Applied K-Means clustering to group similar program names using text vectorization and scikit-learn.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_9",
+    "learning": "Learned how to cluster textual data and reduce complexity in datasets."
+  },
+  {
+    "title": "Module 10 – Data Dashboard",
+    "overview": "Built an interactive data dashboard using Dash and Plotly to answer a research question with visualizations.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_10",
+    "learning": "Learned how to design dashboards and communicate insights through visual storytelling."
+  },
+  {
+    "title": "Module 11 – MLOps Pipeline",
+    "overview": "Implemented MLflow tracking for K-Means models to record experiments and compare results.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_11",
+    "learning": "Learned how to track machine learning experiments using MLOps tools."
+  },
+  {
+    "title": "Module 12 – Two-Layer Neural Network",
+    "overview": "Built a two-layer neural network from scratch using NumPy to predict graduate admissions outcomes.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_12",
+    "learning": "Learned how neural networks work internally, including forward and backward propagation."
+  },
+  {
+    "title": "Module 13 – Scale & LM Deployment",
+    "overview": "Fine-tuned a pretrained language model and deployed it in a Flask app to predict admissions outcomes from text and structured data.",
+    "github": "https://github.com/israchowdhry/jhu_software_concepts/tree/main/module_13",
+    "learning": "Learned how to integrate machine learning models into web applications and deploy them for real use."
+  }
+]
