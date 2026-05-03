@@ -1,3 +1,12 @@
+## Course Title - Modern Software Concepts in Python
+
+## Isra Chowdhry
+
+ This repository contains all coursework completed for the Modern Software Concepts in Python course. It showcases a progression of projects covering web development, data collection, database integration, cloud deployment, data analysis, machine learning, and full-stack application development. Each module builds on previous work to create a comprehensive and practical software engineering portfolio.
+
+## Project Portfolio
+The final website serves as a portfolio that presents all completed course modules in a clean and organized format. The Projects page dynamically loads project data from a JSON file and displays each module as a structured content block, including a project overview, GitHub link, and key learning outcomes. The website demonstrates the progression of skills developed throughout the semester and provides an accessible way to explore each project.
+
 ## Module 1 – Personal Website
 
 Grader Comment:
@@ -132,3 +141,21 @@ This makes the module easier to run in a clean environment and clearly documents
 
 ## Module 13 - Scale & LM Deployment
 
+
+## Organization of Repository 
+
+The repository is organized into module-based folders (module_1 through module_13), where each folder contains the code and deliverables for that specific assignment.
+
+A root-level requirements.txt file lists all dependencies used across modules. The root README.md provides an overview of the repository, a log of grader corrections, and a summary of the final portfolio.
+
+Supporting files such as data, templates, static assets, and documentation are organized within their respective module directories to maintain clarity and modularity.
+
+## Final Reflection 
+
+Over the course of the semester, I found Module 2 (Web Scraping) to be the most challenging. It was something completely new to me, and coming from Intro to Python, which was my first coding class, it felt overwhelming at times. I had to adjust to a much deeper level of coding and problem-solving than I was used to, and it took time to really understand how to approach both the logic and the structure of the code. The constant troubleshooting was also challenging, as small errors could take a while to identify and fix, which sometimes made the process feel frustrating.
+
+The module that best reflects my strongest work is Module 9 (Data Preparation & Models). I felt that I understood the concepts the most in this module and was able to apply them confidently. It was one of the first times I felt fully comfortable with both the implementation and the reasoning behind the solution.
+
+Throughout the semester, I believe my problem-solving skills improved the most. Early on, I would often get stuck and not know how to move forward, but over time I became more confident in breaking problems down, testing different approaches, and debugging my code.
+
+At the beginning of the course, I did not know what to expect from Python or how much could be done with it. By the end, I realized how powerful it is and how many different ways there are to accomplish the same goal. This course helped me see Python not just as a language, but as a tool that can be used to build complete systems and solve real-world problems.
