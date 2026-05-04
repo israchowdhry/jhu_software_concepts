@@ -141,6 +141,14 @@ This makes the module easier to run in a clean environment and clearly documents
 
 ## Module 13 - Scale & LM Deployment
 
+Grader Comment:
+Step 1 did not explain which columns were used and why. The tokenizer choice was also not explicitly explained.
+
+Revision Made:
+Added a clear explanation of the text and structured columns used for model input, including why each group of fields was included. Also added an explicit explanation that AutoTokenizer was used with distilbert-base-uncased so the tokenizer matches the pretrained transformer model.
+
+Why This Improves the Solution:
+These additions make the modeling choices easier to understand and show why the selected fields and tokenizer were appropriate for the admissions prediction task.
 
 ## Organization of Repository 
 

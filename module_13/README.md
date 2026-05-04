@@ -22,6 +22,40 @@ A pretrained **DistilBERT** transformer model is fine-tuned to perform binary cl
 
 ---
 
+## Step 1 – Columns Used and Why
+
+The model uses both text-based and structured applicant fields.
+
+The text fields include:
+- program_name
+- comments
+- llm-generated-program
+- llm-generated-university
+- start_term
+
+These fields were chosen because they describe the applicant’s program, university, admission cycle, and any additional context. They allow the transformer model to learn patterns from natural language and program descriptions.
+
+The structured fields include:
+- gpa
+- gre_score
+- gre_v_score
+- gre_aw
+- degree
+- international_american
+
+These fields represent common admissions-related factors such as academic performance, degree level, and applicant category. These values were converted into labeled text so they could be processed by the transformer model alongside the free-text fields.
+
+---
+
+## Tokenizer Choice
+
+The AutoTokenizer associated with distilbert-base-uncased was used so that the tokenization process matches the pretrained transformer model.
+
+This is important because the tokenizer determines how input text is split into tokens, and the model expects inputs in the same format it was originally trained on.
+
+The distilbert-base-uncased model was chosen because it is smaller and faster than full BERT while still providing strong performance for text classification tasks. The “uncased” version also helps standardize input by ignoring capitalization differences, which is useful for inconsistent scraped data.
+
+
 ## Project Structure
 
 - **train_model.py** – data preprocessing, training, and evaluation  
@@ -121,6 +155,7 @@ The application:
 - Task: Binary classification
 - Input: Combined structured and text features
 - Training: Fine-tuning using the Hugging Face Trainer API
+
 
 ## Evaluation Metrics
 
