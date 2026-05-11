@@ -4,6 +4,6 @@ pytest
 pytest-cov
 beautifulsoup4
 urllib3
-python-dotenv
+python-dotenv==1.2.2
 pylint
 pydeps
